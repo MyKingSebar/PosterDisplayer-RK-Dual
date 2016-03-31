@@ -883,14 +883,8 @@ public class PosterMainActivity extends Activity{
 		public void run() 
 		{
 			sendToExtendScreen();
-			
-			startActivity(PosterApplication.getInstance().getPackageManager()
-					.getLaunchIntentForPackage("com.wznews.wzlife.wzjiaojin"));
-			
-			/*
 			startActivity(PosterApplication.getInstance().getPackageManager()
 					.getLaunchIntentForPackage("com.youngsee.posterdisplayer"));
-			*/
 		}
 	};
 	

@@ -18,9 +18,9 @@ import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.TypefaceManager;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.R;
 
 public class DateTimeView extends PosterBaseView

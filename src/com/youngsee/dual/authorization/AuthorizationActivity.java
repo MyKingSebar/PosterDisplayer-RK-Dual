@@ -17,6 +17,7 @@ import java.io.InputStreamReader;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.youngsee.dual.common.Base64Utils;
+import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.RSAUtils;
@@ -249,7 +250,7 @@ public class AuthorizationActivity extends Activity implements OnClickListener {
 	}
 	
 	private void switchToSettings() {
-		PosterApplication.startApplication(this, "com.android.settings");
+		PosterApplication.startApplication(this, Contants.SETTING_PACKAGENAME);
 	}
 	
 	private void showServerParamDialog(final ConcurrentHashMap<String, String> serverParam) {
@@ -411,6 +412,7 @@ public class AuthorizationActivity extends Activity implements OnClickListener {
 		}
 	};
 	
+	@SuppressWarnings("deprecation")
 	private void authOnline(){
 		View contentView = LayoutInflater.from(this).inflate(R.layout.pop_input_code, null);
 		

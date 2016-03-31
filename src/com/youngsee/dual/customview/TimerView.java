@@ -10,8 +10,8 @@ import android.text.format.Time;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.MediaInfoRef;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.R;
 
 public class TimerView extends PosterBaseView

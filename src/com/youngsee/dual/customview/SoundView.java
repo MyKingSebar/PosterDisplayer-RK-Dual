@@ -10,7 +10,7 @@ package com.youngsee.dual.customview;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.youngsee.dual.common.Logger;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.R;
 
 import android.annotation.SuppressLint;

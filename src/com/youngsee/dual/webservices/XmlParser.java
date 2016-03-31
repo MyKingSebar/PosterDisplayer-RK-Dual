@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.xmlpull.v1.XmlPullParser;
 
-import com.youngsee.dual.common.Logger;
+import com.youngsee.dual.logmanager.Logger;
 
 import android.util.Xml;
 

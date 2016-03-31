@@ -7,8 +7,8 @@
 
 package com.youngsee.dual.osd;
 
-import com.youngsee.dual.common.LogUtils;
-import com.youngsee.dual.common.Logger;
+import com.youngsee.dual.logmanager.LogUtils;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.R;
 
 import android.app.Activity;

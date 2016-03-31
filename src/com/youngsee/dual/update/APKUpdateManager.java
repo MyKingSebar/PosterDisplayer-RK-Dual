@@ -33,7 +33,6 @@ import com.youngsee.dual.ftpoperation.FtpOperationInterface;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 import com.youngsee.dual.posterdisplayer.R;
-import com.youngsee.dual.posterdisplayer.UrgentPlayerActivity;
 import com.youngsee.dual.webservices.WsClient;
 import com.youngsee.dual.webservices.XmlCmdInfoRef;
 import com.youngsee.dual.webservices.XmlParser;
@@ -515,11 +514,8 @@ public class APKUpdateManager {
 			return;
 		}
 
-		if (UrgentPlayerActivity.INSTANCE != null) {
-            mDlProgressBar = new ProgressDialog(UrgentPlayerActivity.INSTANCE);
-        } else {
-        	mDlProgressBar = new ProgressDialog(PosterMainActivity.INSTANCE);
-        }
+
+        mDlProgressBar = new ProgressDialog(PosterMainActivity.INSTANCE);
 		mDlProgressBar.setTitle("应用程序更新");
 		mDlProgressBar.setMessage("下载中，请稍后。。。");
 		mDlProgressBar.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);

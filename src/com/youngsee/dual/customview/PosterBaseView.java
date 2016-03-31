@@ -22,13 +22,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.youngsee.dual.common.FileUtils;
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.Md5;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.SysParamManager;
 import com.youngsee.dual.common.TypefaceManager;
 import com.youngsee.dual.ftpoperation.FtpFileInfo;
 import com.youngsee.dual.ftpoperation.FtpHelper;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.screenmanager.ScreenManager;
 
@@ -41,6 +41,7 @@ import android.graphics.Typeface;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
 public abstract class PosterBaseView extends LinearLayout {
@@ -99,7 +100,7 @@ public abstract class PosterBaseView extends LinearLayout {
     {
         mWidth = nWidth;
         mHeight = nHeight;
-        this.setLayoutParams(new LinearLayout.LayoutParams(nWidth, nHeight));
+        this.setLayoutParams(new FrameLayout.LayoutParams(nWidth, nHeight));
     }
     
     public void setMediaList(List<MediaInfoRef> lst) 
@@ -144,6 +145,12 @@ public abstract class PosterBaseView extends LinearLayout {
     
     public static boolean md5IsCorrect(MediaInfoRef media)
     {
+    	if (media.filePath.equals(PosterApplication.getInstance().getStandbyScreenImgPath()))
+    	{
+    		// 待机画面不做MD5校验
+    		return true;
+    	}
+    	
         String md5Value = new Md5(media.md5Key).ComputeFileMd5(media.filePath);
         
         if (md5Value != null && md5Value.equals(media.verifyCode))
@@ -525,7 +532,7 @@ public abstract class PosterBaseView extends LinearLayout {
         else
         {
             String strKey = getImgCacheKey(picInfo);
-            if ((retBmp = PosterApplication.getBitmapFromMemoryCache(mContext, strKey)) == null)
+            if ((retBmp = PosterApplication.getBitmapFromMemoryCache(strKey)) == null)
             {
                 if (FileUtils.mediaIsPicFromNet(picInfo))
                 {
@@ -533,7 +540,7 @@ public abstract class PosterBaseView extends LinearLayout {
                     // if so, then load the picture to memory cache and show it.
                     if ((retBmp = PosterApplication.getBitmapFromDiskCache(strKey)) != null)
                     {
-                        PosterApplication.addBitmapToMemoryCache(mContext, strKey, retBmp);
+                        PosterApplication.addBitmapToMemoryCache(strKey, retBmp);
                     }
                     else
                     {
@@ -577,7 +584,7 @@ public abstract class PosterBaseView extends LinearLayout {
         if (isUseCache && srcBmp != null)
         {
             String strKey = getImgCacheKey(picInfo);
-            PosterApplication.addBitmapToMemoryCache(mContext, strKey, srcBmp);
+            PosterApplication.addBitmapToMemoryCache(strKey, srcBmp);
             PosterApplication.addBitmapToDiskCache(strKey, srcBmp);
         }
         
@@ -636,7 +643,7 @@ public abstract class PosterBaseView extends LinearLayout {
         // Will be stored the new image to LruCache
         if (srcBmp != null)
         {
-            PosterApplication.addBitmapToMemoryCache(mContext, getImgCacheKey(picInfo), srcBmp);
+            PosterApplication.addBitmapToMemoryCache(getImgCacheKey(picInfo), srcBmp);
         }
 
         return srcBmp;

@@ -28,15 +28,14 @@ import android.text.format.Time;
 import com.youngsee.dual.authorization.AuthorizationActivity;
 import com.youngsee.dual.authorization.AuthorizationManager;
 import com.youngsee.dual.common.FileUtils;
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.Md5;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.SubWindowInfoRef;
 import com.youngsee.dual.ftpoperation.FtpFileInfo;
 import com.youngsee.dual.ftpoperation.FtpHelper;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
-import com.youngsee.dual.posterdisplayer.UrgentPlayerActivity;
 import com.youngsee.dual.webservices.XmlParser;
 
 @SuppressLint("DefaultLocale")
@@ -299,13 +298,6 @@ public class ScreenManager
         mHandler.removeMessages(EVENT_SHOW_IDLE_PROGRAM);
         mHandler.removeMessages(EVENT_SHOW_NORMAL_PROGRAM);
         mHandler.removeMessages(EVENT_SHOW_URGENT_PROGRAM);
-        //destroyProgressBar();
-        
-        // 如果Activity已存在，则关闭
-        if (UrgentPlayerActivity.INSTANCE != null)
-        {
-            UrgentPlayerActivity.INSTANCE.finish();
-        }
     }
     
     public boolean isRuning()
@@ -462,8 +454,7 @@ public class ScreenManager
             {
                 try
                 {
-                	if (AuthorizationManager.getInstance().getStatus()
-                			== AuthorizationManager.STATUS_AUTHORIZED) {
+					if (AuthorizationManager.getInstance().getStatus() == AuthorizationManager.STATUS_AUTHORIZED) {
                 		if (AuthorizationActivity.INSTANCE != null) {
                 			AuthorizationActivity.INSTANCE.finish();
                             while (AuthorizationActivity.INSTANCE != null) {
@@ -683,14 +674,6 @@ public class ScreenManager
                                 mUrgentProgram = mSamePriUrgentPgmList.get(mSamePriUrgentPgmListIdx);
                                 loadProgramContent(EVENT_SHOW_URGENT_PROGRAM, mUrgentProgram);
                             }
-                            else
-                            {
-                                // 异常关闭，重新启动窗口
-                                if (UrgentPlayerActivity.INSTANCE == null)
-                                {
-                                    loadProgramContent(EVENT_SHOW_URGENT_PROGRAM, mUrgentProgram);
-                                }
-                            }
                         }
                         else if ((mUrgentProgram = obtainUrgentProgram()) != null)
                         {
@@ -700,36 +683,19 @@ public class ScreenManager
                         }
                         else if (normalPgmIsValid())
                         {
+                        	Logger.i("Urgent program is invalid, and normal program is valid, go to PLAYING_NORMAL_PROGRAM status.");
+                        	
+                        	// Clean urgent program's flag
                             mUrgentProgram = null;
                             mCurrentUrgentPgmVerifyCode = null;
-
-                            Logger.i("Urgent program is invalid, and normal program is valid, go to PLAYING_NORMAL_PROGRAM status.");
-
-                            if (mCurrentNormalPgmVerifyCode != null &&
-                                mCurrentNormalPgmVerifyCode.equals(mNormalProgram.verifyCode))
+                            
+                            // Re-start play normal program
+                            if (loadProgramContent(EVENT_SHOW_NORMAL_PROGRAM, mNormalProgram))
                             {
-                                // Stop the FTP download of the urgent program
-                                stopFtpDownloadMaterials();
-                                
-                                // Close urgent player.
-                                if (UrgentPlayerActivity.INSTANCE != null)
-                                {
-                                    UrgentPlayerActivity.INSTANCE.finish();
-                                    while (UrgentPlayerActivity.INSTANCE != null)
-                                    {
-                                        Thread.sleep(100);
-                                    }
-                                }
-                                
+                                // 节目加载成功
                                 mStatus = PLAYING_NORMAL_PROGRAM;
                             }
-                            else
-                            {
-                                if (loadProgramContent(EVENT_SHOW_NORMAL_PROGRAM, mNormalProgram))
-                                {
-                                    mStatus = PLAYING_NORMAL_PROGRAM;
-                                }
-                            }
+                            
                             continue;
                         }
                         else
@@ -797,7 +763,7 @@ public class ScreenManager
         {
             if (mOsdIsOpen)
             {
-                Logger.e("loadProgramContent(): Osd already open, can't load.");
+                Logger.e("loadProgramContent(): Osd already open, can't load program.");
                 return false;
             }
             else if (msgId == EVENT_SHOW_URGENT_PROGRAM &&
@@ -831,7 +797,7 @@ public class ScreenManager
                 return true;
             }  
 
-            // Stop the FTP download of the last program
+            // Stop the FTP download for the last program
             stopFtpDownloadMaterials();
             
             // 获取窗口信息
@@ -850,44 +816,7 @@ public class ScreenManager
                 Logger.e("loadProgramContent(): No subwindow info.");
                 return false;
             }
-            
-            if (msgId == EVENT_SHOW_URGENT_PROGRAM)
-            {
-                // 如果Urgent Activity不存在，则创建新的Activity
-                if (UrgentPlayerActivity.INSTANCE == null)
-                {
-                    Logger.i("start a new urgent activity....");
-                    
-                    if (mContext == null || !(mContext instanceof Activity))
-                    {
-                        Logger.e("startUrgentActivity: context has error");
-                        return false;
-                    }
-                    
-                    // 启动新的Activity
-                    Intent intent = new Intent(mContext, UrgentPlayerActivity.class);
-                    ((Activity) mContext).startActivity(intent);
-                    
-                    // wait for Activity start up
-                    while (UrgentPlayerActivity.INSTANCE == null)
-                    {
-                        Thread.sleep(100);
-                    }
-                }
-            }
-            else
-            {
-                // 非紧急节目，则销毁紧急节目Activity
-                if (UrgentPlayerActivity.INSTANCE != null)
-                {
-                    UrgentPlayerActivity.INSTANCE.finish();
-                    while (UrgentPlayerActivity.INSTANCE != null)
-                    {
-                        Thread.sleep(100);
-                    }
-                }
-            }
-            
+
             // 清空标志
             mLoadProgramDone = false;
             if (pgmInfo != null)
@@ -914,11 +843,17 @@ public class ScreenManager
             // 更新当前节目的VerifyCode
             if (msgId == EVENT_SHOW_URGENT_PROGRAM)
             {
+            	mStandbyScreenIsShow = false;
                 mCurrentUrgentPgmVerifyCode = pgmInfo.verifyCode;
             }
             else if (msgId == EVENT_SHOW_NORMAL_PROGRAM)
             {
+            	mStandbyScreenIsShow = false;
                 mCurrentNormalPgmVerifyCode = pgmInfo.verifyCode;
+            }
+            else if (msgId == EVENT_SHOW_IDLE_PROGRAM)
+            {
+            	mStandbyScreenIsShow = true;
             }
             
             return true;
@@ -1859,12 +1794,40 @@ public class ScreenManager
         private ArrayList<SubWindowInfoRef> getStandbyWndInfoList()
         {
             ArrayList<SubWindowInfoRef> subWndInfoList = new ArrayList<SubWindowInfoRef>();
+            List<MediaInfoRef> mediaList = new ArrayList<MediaInfoRef>();
+            
+            // 创建新的playMediaInfo
+            MediaInfoRef playMediaInfo = new MediaInfoRef();
+            playMediaInfo.filePath = PosterApplication.getInstance().getStandbyScreenImgPath();
+            playMediaInfo.md5Key = 0;
+            playMediaInfo.verifyCode = "";
+            playMediaInfo.remotePath = "";
+            playMediaInfo.mid = "0";
+            playMediaInfo.vType = "Image";
+            playMediaInfo.mediaType = "Image";
+            playMediaInfo.source = "File";
+            playMediaInfo.duration = 60 * 1000;
+            playMediaInfo.times = 0;
+            playMediaInfo.mode = 0;
+            playMediaInfo.aspect = 0;
+            playMediaInfo.speed = 0;
+            playMediaInfo.vol = 0;
+            playMediaInfo.durationPerPage = 60 * 1000;
+            playMediaInfo.playlistmode = "loop";
+            playMediaInfo.timetype = "absolute";
+            playMediaInfo.starttime = null;
+            playMediaInfo.endtime = null;
+            playMediaInfo.containerwidth = PosterApplication.getScreenWidth();
+            playMediaInfo.containerheight = PosterApplication.getScreenHeigth();
+            playMediaInfo.isIgnoreDlLimit = false;
+            mediaList.add(playMediaInfo);
             
             SubWindowInfoRef subWndInfo = new SubWindowInfoRef();
             subWndInfo.setSubWindowType("StandbyScreen");
             subWndInfo.setSubWindowName("StandbyScreenImage");
             subWndInfo.setWidth(PosterApplication.getScreenWidth());
             subWndInfo.setHeight(PosterApplication.getScreenHeigth());
+            subWndInfo.setSubWndMediaList(mediaList);
             subWndInfoList.add(subWndInfo);
             
             return subWndInfoList;
@@ -1911,28 +1874,11 @@ public class ScreenManager
             switch (msg.what)
             {
             case EVENT_SHOW_NORMAL_PROGRAM:
-                if (mContext instanceof PosterMainActivity)
-                {
-                    ((PosterMainActivity) mContext).loadProgram((ArrayList<SubWindowInfoRef>) msg.getData().getSerializable("subwindowlist"));
-                    mStandbyScreenIsShow = false;
-                }
-                mLoadProgramDone = true;
-                return;
-                                       
             case EVENT_SHOW_URGENT_PROGRAM:
-                if (UrgentPlayerActivity.INSTANCE != null)
-                {
-                    UrgentPlayerActivity.INSTANCE.loadProgram((ArrayList<SubWindowInfoRef>) msg.getData().getSerializable("subwindowlist"));
-                    mStandbyScreenIsShow = false;
-                }
-                mLoadProgramDone = true;
-                return;
-                                       
             case EVENT_SHOW_IDLE_PROGRAM:
                 if (mContext instanceof PosterMainActivity)
                 {
-                    ((PosterMainActivity) mContext).loadProgram((ArrayList<SubWindowInfoRef>) msg.getData().getSerializable("subwindowlist"));
-                    mStandbyScreenIsShow = true;
+                    ((PosterMainActivity) mContext).loadNewProgram((ArrayList<SubWindowInfoRef>) msg.getData().getSerializable("subwindowlist"));
                 }
                 mLoadProgramDone = true;
                 return; 

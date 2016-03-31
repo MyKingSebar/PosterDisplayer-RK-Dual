@@ -33,6 +33,7 @@ import android.os.StatFs;
 import android.os.storage.StorageManager;
 import android.text.TextUtils;
 
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 

@@ -35,13 +35,11 @@ import android.util.Xml;
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.FileUtils;
-import com.youngsee.dual.common.LogUtils;
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.Md5;
-import com.youngsee.dual.common.RuntimeExec;
 import com.youngsee.dual.common.SysParamManager;
-import com.youngsee.dual.envmnt.EnvMntManager;
 import com.youngsee.dual.ftpoperation.FtpHelper;
+import com.youngsee.dual.logmanager.LogUtils;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 import com.youngsee.dual.power.PowerOnOffManager;
@@ -306,14 +304,10 @@ public class WsClient
             SysParamManager.getInstance().setSigOutParam(retSysParam.sigOutSet);
         }
 
-        if (PosterApplication.getInstance().getConfiguration().hasEnvironmentMonitor()) {
-        	EnvMntManager.getInstance().updateMonitorDevice();
-        }
-
         // 重启设备，参数立即生效
         if (mServerConfigChanged)
         {
-            RuntimeExec.getInstance().runRootCmd("reboot");
+            //RuntimeExec.getInstance().runRootCmd("reboot");
         }
 
         return true;

@@ -4,17 +4,17 @@
     android:layout_height="match_parent" 
     android:id="@+id/mainlayout">
 
+        <SurfaceView
+            android:id="@+id/multimedia_surfaceview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    
     	<com.youngsee.dual.customview.ProgressBarView 
     	    android:id="@+id/multimedia_progressbar"
     	    android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone"/>
-
-    	<SurfaceView
-            android:id="@+id/multimedia_surfaceview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
 
         <ImageSwitcher
             android:id="@+id/multimedia_imgswitcher"

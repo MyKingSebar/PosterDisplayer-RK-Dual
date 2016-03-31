@@ -18,11 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.FileUtils;
-import com.youngsee.dual.common.LogUtils;
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.Md5;
 import com.youngsee.dual.common.SysParamManager;
+import com.youngsee.dual.logmanager.LogUtils;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
+
 import it.sauronsoftware.ftp4j.FTPAbortedException;
 import it.sauronsoftware.ftp4j.FTPClient;
 import it.sauronsoftware.ftp4j.FTPDataTransferException;

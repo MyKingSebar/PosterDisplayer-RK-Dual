@@ -7,6 +7,7 @@
 
 package com.youngsee.dual.customview;
 
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 import com.youngsee.dual.posterdisplayer.R;
 
@@ -30,6 +31,7 @@ import android.net.http.SslError;
 
 public class YSWebView extends PosterBaseView
 {
+    private Context mContext = null;
     private WebView mWv = null;
 
     public YSWebView(Context context)
@@ -53,6 +55,7 @@ public class YSWebView extends PosterBaseView
     @SuppressLint("SetJavaScriptEnabled")
     private void initView(Context context)
     {
+        mContext = context;
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         inflater.inflate(R.layout.view_web, this);
         
@@ -171,7 +174,10 @@ public class YSWebView extends PosterBaseView
                 {
                     if (event.getAction() == MotionEvent.ACTION_UP && event.getX() < 100)
                     {
-                        PosterMainActivity.INSTANCE.showOsd();
+                        if (mContext instanceof PosterMainActivity)
+                        {
+                            PosterMainActivity.INSTANCE.showOsd();
+                        }
                         return true;
                     }
                    return false;           
@@ -237,6 +243,17 @@ public class YSWebView extends PosterBaseView
     @Override
     public void startWork()
     {
+    	if (mMediaList == null)
+        {
+            Logger.i("Media list is null.");
+            return;
+        }
+        else if (mMediaList.isEmpty())
+        {
+            Logger.i("No media in the list.");
+            return;
+        }
+    	
         mCurrentIdx = 0;
         mCurrentMedia = mMediaList.get(mCurrentIdx);
         setUrl(mCurrentMedia.filePath);

@@ -15,8 +15,6 @@ import java.util.Random;
 
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.FileUtils;
-import com.youngsee.dual.common.LogUtils;
-import com.youngsee.dual.common.Logger;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.customview.ControlView.OnControlChangedListener;
 import com.youngsee.dual.customview.SoundView.OnVolumeChangedListener;
@@ -24,10 +22,11 @@ import com.youngsee.dual.gifdecode.GifAction;
 import com.youngsee.dual.gifdecode.GifDecodeInfo;
 import com.youngsee.dual.gifdecode.GifDecoder;
 import com.youngsee.dual.gifdecode.GifFrame;
+import com.youngsee.dual.logmanager.LogUtils;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 import com.youngsee.dual.posterdisplayer.R;
-import com.youngsee.dual.posterdisplayer.UrgentPlayerActivity;
 import com.youngsee.dual.screenmanager.ScreenManager;
 
 import android.annotation.SuppressLint;
@@ -136,22 +135,28 @@ public class MultiMediaView extends PosterBaseView
     public MultiMediaView(Context context)
     {
         super(context);
-        initView(context);
+        initView(context, false);
     }
     
     public MultiMediaView(Context context, AttributeSet attrs)
     {
         super(context, attrs);
-        initView(context);
+        initView(context, false);
     }
     
     public MultiMediaView(Context context, AttributeSet attrs, int defStyle)
     {
         super(context, attrs, defStyle);
-        initView(context);
+        initView(context, false);
     }
     
-    private void initView(Context context)
+    public MultiMediaView(Context context, boolean hasSurface)
+    {
+        super(context);
+        initView(context, hasSurface);
+    }
+    
+    private void initView(Context context, boolean isShowSurface)
     {
         Logger.d("[" + mViewName + "] MultiMedia View initialize......");
         
@@ -171,7 +176,10 @@ public class MultiMediaView extends PosterBaseView
         mSurfaceHolder.addCallback(new SurfaceHolderCallBack());
         //mSurfaceView.setFocusable(true);
         mSurfaceView.setFocusableInTouchMode(true);
-        
+		if (isShowSurface) {
+			doShowSurfaceView();
+		}
+        	
         // Init imageswithcher parameters
         ViewFactory factory = new ViewFactory()
         {
@@ -464,8 +472,6 @@ public class MultiMediaView extends PosterBaseView
         cleanupMsg();
         hideController();
         releaseMediaPlayer();
-        clearImageView();
-        this.removeAllViews();
     }
     
     private void cleanupMsg()
@@ -511,10 +517,16 @@ public class MultiMediaView extends PosterBaseView
         cancelUpdateThread();
         cleanupMsg();
         releaseMediaPlayer();
-        mMediaPosition = -1;
+        doHideAllViews();
+        
+        mMediaList.clear();
+        mMediaList = null;
         mCurrentIdx   = -1;
         mCurrentMedia = null;
+        
+        mMediaPosition = -1;
         mIsPlayingVideo = false;
+        mSurfaceIsReady = false;
     }
 
     private void startUpdateThread()
@@ -899,7 +911,7 @@ public class MultiMediaView extends PosterBaseView
                             {
                                 informStopAudio();
                             }
-                            if (!mSurfaceIsReady)
+                            if (mCurrentShowType != SHOWTYPE_VIDEO)
                             {
                                 showSurfaceView();
                                 while (!mSurfaceIsReady)
@@ -1005,10 +1017,6 @@ public class MultiMediaView extends PosterBaseView
         {
             ((PosterMainActivity) mContext).startAudio();
         }
-        else if (mContext instanceof UrgentPlayerActivity)
-        {
-            ((UrgentPlayerActivity) mContext).startAudio();
-        }
     }
     
     private void informStopAudio()
@@ -1016,10 +1024,6 @@ public class MultiMediaView extends PosterBaseView
         if (mContext instanceof PosterMainActivity)
         {
             ((PosterMainActivity) mContext).stopAudio();
-        }
-        else if (mContext instanceof UrgentPlayerActivity)
-        {
-            ((UrgentPlayerActivity) mContext).stopAudio();
         }
     }
     
@@ -1216,10 +1220,11 @@ public class MultiMediaView extends PosterBaseView
         }
     }
     
-    private void clearImageView()
+    public void clearViews()
     {
         mImageSwitcher.clearAnimation();
         mImageSwitcher.removeAllViews();
+        this.removeAllViews();
     }
     
     @SuppressLint("HandlerLeak")
@@ -1273,7 +1278,7 @@ public class MultiMediaView extends PosterBaseView
             super.handleMessage(msg);
         }
     }; 
-    
+
     public boolean needCombineCap()
     {
         return (mCurrentMedia != null && mCurrentMedia.vType != null && !mCurrentMedia.vType.endsWith("BroadcastVideo") && mMediaPlayer != null && mMediaPlayer.isPlaying());

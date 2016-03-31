@@ -11,6 +11,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.youngsee.dual.logmanager.Logger;
+
 public class Md5
 {
     private int A = 0;

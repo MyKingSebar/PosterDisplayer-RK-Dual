@@ -1,12 +1,6 @@
 package com.youngsee.dual.authorization;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-
 import org.json.JSONException;
 
 import android.annotation.SuppressLint;
@@ -18,7 +12,7 @@ import android.os.Message;
 import com.youngsee.dual.common.Base64Utils;
 import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.FileUtils;
-import com.youngsee.dual.common.Logger;
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.common.RSAUtils;
 import com.youngsee.dual.network.JSONUtil;
 import com.youngsee.dual.network.NetWorkUtil;
@@ -230,7 +224,8 @@ public class AuthorizationManager {
         boolean mIsWaitingResult = false;
         NetWorkUtil mNetWork = null;
         
-        Handler mHandler = new Handler(){
+        @SuppressLint("HandlerLeak")
+		Handler mHandler = new Handler(){
             public void handleMessage(android.os.Message msg){
                 if(msg.arg1 != NetWorkUtil.NETWORK_OK){
                     mIsWaitingResult = false;

@@ -14,9 +14,6 @@ import android.content.Context;
 public class YSConfiguration{
     private final static String    configFileName          = "config.properties";
     private final static String    key_feature             = "feature";
-    private final static String    key_dock_bar            = "lunch_app_dock_bar";
-    private final static String    key_encryption_chip     = "encryption_chip";
-    private final static String    key_environment_monitor = "environment_monitor";
     private final static String    key_need_bootanimation  = "need_boot_animation";
     
     public final static String     FEATURE_CODE_YUESHI     = "YueShi";
@@ -30,9 +27,6 @@ public class YSConfiguration{
     private static Application     mApplication            = null;
     
     private String                 mFeatureCode            = null;
-    private Boolean                mHasDockBar             = null;
-    private Boolean                mHasEncryptionChip      = null;
-    private Boolean                mHasEnvironmentMonitor  = null;
     private Boolean                mHasBootAnimation       = null;
     
     /**
@@ -64,44 +58,6 @@ public class YSConfiguration{
     }
     
     /**
-     * Does the application has dock bar at the bottom of main window.
-     * 
-     * @return
-     */
-    public Boolean hasDockBar(){
-        if(mHasDockBar == null){
-            String temp = getProperties(key_dock_bar);
-            if(temp != null){
-                mHasDockBar = Boolean.valueOf(temp);
-            }
-            else{
-                mHasDockBar = false;
-            }
-        }
-        
-        return mHasDockBar;
-    }
-    
-    /**
-     * Does the main board has encryption chip.
-     * 
-     * @return
-     */
-    public Boolean hasEncryptionChip(){
-        if(mHasEncryptionChip == null){
-            String temp = getProperties(key_encryption_chip);
-            if(temp != null){
-                mHasEncryptionChip = Boolean.valueOf(temp);
-            }
-            else{
-                mHasEncryptionChip = false;
-            }
-        }
-        
-        return mHasEncryptionChip;
-    }
-    
-    /**
      * Check that whether need boot animation
      * 
      * @return
@@ -119,28 +75,10 @@ public class YSConfiguration{
         
         return mHasBootAnimation;
     }
-    
-    /**
-     * Does the application has environment monitor.
-     * 
-     * @return
-     */
-    public Boolean hasEnvironmentMonitor(){
-        if(mHasEnvironmentMonitor == null){
-            String temp = getProperties(key_environment_monitor);
-            if(temp != null){
-                mHasEnvironmentMonitor = Boolean.valueOf(temp);
-            }
-            else{
-                mHasEnvironmentMonitor = false;
-            }
-        }
-        
-        return mHasEnvironmentMonitor;
-    }
-    
+
     // get the property by key.
-    private String getProperties(String key){
+    private String getProperties(String key)
+    {
         Context c = mApplication.getApplicationContext();
         String value = null;
         

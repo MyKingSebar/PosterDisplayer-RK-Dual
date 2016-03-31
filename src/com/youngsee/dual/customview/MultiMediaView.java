@@ -472,8 +472,6 @@ public class MultiMediaView extends PosterBaseView
         cleanupMsg();
         hideController();
         releaseMediaPlayer();
-        clearImageView();
-        this.removeAllViews();
     }
     
     private void cleanupMsg()
@@ -1222,10 +1220,11 @@ public class MultiMediaView extends PosterBaseView
         }
     }
     
-    private void clearImageView()
+    public void clearViews()
     {
         mImageSwitcher.clearAnimation();
         mImageSwitcher.removeAllViews();
+        this.removeAllViews();
     }
     
     @SuppressLint("HandlerLeak")

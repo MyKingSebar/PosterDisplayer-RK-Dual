@@ -7,6 +7,7 @@
 
 package com.youngsee.dual.customview;
 
+import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 import com.youngsee.dual.posterdisplayer.R;
 
@@ -242,6 +243,17 @@ public class YSWebView extends PosterBaseView
     @Override
     public void startWork()
     {
+    	if (mMediaList == null)
+        {
+            Logger.i("Media list is null.");
+            return;
+        }
+        else if (mMediaList.isEmpty())
+        {
+            Logger.i("No media in the list.");
+            return;
+        }
+    	
         mCurrentIdx = 0;
         mCurrentMedia = mMediaList.get(mCurrentIdx);
         setUrl(mCurrentMedia.filePath);

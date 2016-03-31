@@ -271,7 +271,24 @@ public class PosterMainActivity extends Activity{
 
 	@Override
 	protected void onResume() {
-		super.onResume();
+	{
+		if (mMainWindow != null)
+		{
+			mMainWindow.onViewResume();
+		}
+		
+		if (mSubWndCollection != null)
+        {
+            for (PosterBaseView wnd : mSubWndCollection)
+            {
+                wnd.onViewResume();
+            }
+        }
+		
+		if (TextUtils.isEmpty(ScreenManager.getInstance().getPlayingPgmId()))
+        {
+            LogUtils.getInstance().toAddPLog(0, Contants.PlayProgramStart, ScreenManager.getInstance().getPlayingPgmId(), "", "");
+        }
 		
 	    hideNavigationBar();
         if (PowerOnOffManager.getInstance().getCurrentStatus() == PowerOnOffManager.STATUS_STANDBY)
@@ -279,14 +296,35 @@ public class PosterMainActivity extends Activity{
             PowerOnOffManager.getInstance().setCurrentStatus(PowerOnOffManager.STATUS_ONLINE);
             PowerOnOffManager.getInstance().checkAndSetOnOffTime(PowerOnOffManager.AUTOSCREENOFF_URGENT);
         }
+        
+        super.onResume();
 	}
 
 	@Override
-	protected void onPause() {
+	protected void onPause() 
+	{
 		mHandler.removeCallbacks(rSetWndBgDelay);
 		mHandler.removeCallbacks(rHideOsdPopWndDelay);
 		mHandler.removeCallbacks(rGoToExtendScreenDelay);
 		
+		if (mMainWindow != null)
+		{
+			mMainWindow.onViewPause();
+		}
+		
+		if (mSubWndCollection != null)
+        {
+            for (PosterBaseView wnd : mSubWndCollection)
+            {
+                wnd.onViewPause();
+            }
+        }
+
+        if (!TextUtils.isEmpty(ScreenManager.getInstance().getPlayingPgmId()))
+        {
+            LogUtils.getInstance().toAddPLog(0, Contants.PlayProgramEnd, ScreenManager.getInstance().getPlayingPgmId(), "", "");
+        }
+        
 		if (mOsdPupupWindow.isShowing()) {
 			mOsdPupupWindow.dismiss();
 		}
@@ -306,6 +344,8 @@ public class PosterMainActivity extends Activity{
 		mHandler.removeCallbacks(rHideOsdPopWndDelay);
 		mHandler.removeCallbacks(rGoToExtendScreenDelay);
 		mHandler.removeMessages(EVENT_CHECK_SET_ONOFFTIME);
+
+		cleanupLayout();
 		
 		if (mOsdPupupWindow.isShowing()) {
 			mOsdPupupWindow.dismiss();
@@ -525,12 +565,29 @@ public class PosterMainActivity extends Activity{
 
 	private void cleanupLayout() 
 	{
+		if (mMainWindow != null)
+		{
+			mMainWindow.onViewDestroy();
+		}
+		
+		if (mSubWndCollection != null)
+        {
+            for (PosterBaseView wnd : mSubWndCollection)
+            {
+                wnd.onViewDestroy();
+            }
+        }
+		
 		// 移除子窗口
 		if (mSubWndCollection != null)
         {
             for (PosterBaseView subWnd : mSubWndCollection)
             {
             	subWnd.onViewDestroy();
+            	if (subWnd instanceof MultiMediaView)
+            	{
+            		((MultiMediaView)subWnd).clearViews();
+            	}
             	subWnd.setVisibility(View.GONE);
             	mMainLayout.removeView(subWnd);
             }

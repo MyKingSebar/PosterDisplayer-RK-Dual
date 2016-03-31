@@ -36,6 +36,7 @@ public class OsdLoginFragment extends Fragment
 {
 	static final String OSD_DEFAULT_UN    = "ehualu";
     static final String OSD_DEFAULT_PWD    = "ehualu$888";
+    private LinearLayout        mOsdExit        = null;
     
     private LinearLayout        mOsdLayout         = null;
     private ImageView           mOsdLoginBtn       = null;
@@ -110,6 +111,11 @@ public class OsdLoginFragment extends Fragment
      */
     private void initLoginOsdFragment()
     {
+        mOsdLoginBtn = (ImageView) getActivity().findViewById(R.id.osd_login);
+        mEnterPwd = (EditText) getActivity().findViewById(R.id.osd_password);
+        mEnterUn = (EditText) getActivity().findViewById(R.id.osd_username);
+        mOsdExit = (LinearLayout) getActivity().findViewById(R.id.osd_login_exit);
+        
         mOsdLayout = (LinearLayout) getActivity().findViewById(R.id.osd_layout);
         ViewTreeObserver vto = getView().getViewTreeObserver();  
 		vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener(){ 
@@ -132,7 +138,8 @@ public class OsdLoginFragment extends Fragment
 						mOsdLayout.setX(getView().getWidth() * (4.85f / 27f));
 						mOsdLayout.setY(getView().getHeight() * (20.2f / 47.8f));
 					}
-					
+                    mOsdExit.setX(getView().getWidth() - 65);
+                    mOsdExit.setY(5);
                     mIsInit = false;
             	}
             	else
@@ -160,11 +167,7 @@ public class OsdLoginFragment extends Fragment
             	}       	
 		    }  
 		});
-        
-        mOsdLoginBtn = (ImageView) getActivity().findViewById(R.id.osd_login);
-        mEnterPwd = (EditText) getActivity().findViewById(R.id.osd_password);
-        mEnterUn = (EditText) getActivity().findViewById(R.id.osd_username);
-        
+
         mOsdLoginBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v)
@@ -210,5 +213,14 @@ public class OsdLoginFragment extends Fragment
 				}
             }
         });
+        
+        mOsdExit.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                getActivity().finish();
+            }
+        });
+
     }
 }

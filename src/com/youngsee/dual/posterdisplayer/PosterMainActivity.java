@@ -42,6 +42,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -270,7 +271,7 @@ public class PosterMainActivity extends Activity{
 	}
 
 	@Override
-	protected void onResume() {
+	protected void onResume() 
 	{
 		if (mMainWindow != null)
 		{
@@ -291,6 +292,7 @@ public class PosterMainActivity extends Activity{
         }
 		
 	    hideNavigationBar();
+	    
         if (PowerOnOffManager.getInstance().getCurrentStatus() == PowerOnOffManager.STATUS_STANDBY)
         {
             PowerOnOffManager.getInstance().setCurrentStatus(PowerOnOffManager.STATUS_ONLINE);

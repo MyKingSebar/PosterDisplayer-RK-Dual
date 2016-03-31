@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
-    <com.youngsee.daul.common.AutoScroll
+    <com.youngsee.dual.common.AutoScroll
         android:id="@+id/TextViewNotice"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -188,7 +188,7 @@ public class AuthorizationManager {
 			return null;
 		}
 		StringBuilder urlsb = new StringBuilder();
-    	urlsb.append(WsClient.getServerURLPrefix());
+    	urlsb.append(AuthorizationCommon.AUTHORIZATION_SERVER_URL);
     	urlsb.append("/");
     	urlsb.append(AuthorizationCommon.SERVERFILE_URL_MIDDLE);
     	urlsb.append(file);

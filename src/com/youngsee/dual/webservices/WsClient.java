@@ -67,7 +67,6 @@ public class WsClient
     private static WsClient     mWsClientInstance                        = null;
     private Context             mContext                                 = null;
     private final String        NAME_SPACE                               = "http://dare-tech.com/";
-    private static final String SERVICE_URL                              = "http://server.xuanchuanyun.com/dn2/services/Heart.asmx";
     public static final String  SERVICE_URL_SUFFIX                       = "/services/Heart.asmx";
     
     // Define action for SOAP
@@ -1315,7 +1314,8 @@ public class WsClient
         		return weburl;
         	}
         }
-        return SERVICE_URL;
+        
+        return (PosterApplication.getInstance().getConfiguration().getDefualtServerUrl() + SERVICE_URL_SUFFIX);
     }
     
     public static String getServerURLPrefix()

@@ -13,11 +13,16 @@ import android.content.Context;
  */
 public class YSConfiguration{
     private final static String    configFileName          = "config.properties";
+    
     private final static String    key_feature             = "feature";
     private final static String    key_need_bootanimation  = "need_boot_animation";
+    private final static String    key_defualt_server_url  = "defualt_server_url";
+    private final static String    key_boot_apk_package_name  = "boot_apk_package_name";
     
     public final static String     FEATURE_CODE_YUESHI     = "YueShi";
     public final static String     FEATURE_CODE_COMMON     = "common";
+    
+    public final static String     BOOT_APK_PACKAGE_NAME_NONE = "None";
     
     private static YSConfiguration instance                = null;
     
@@ -28,6 +33,8 @@ public class YSConfiguration{
     
     private String                 mFeatureCode            = null;
     private Boolean                mHasBootAnimation       = null;
+    private String                 mServerUrl              = null;
+    private String                 mBootApkPackageName     = null;
     
     /**
      * Get Configuration by this function to avoid create multiple object of
@@ -76,6 +83,32 @@ public class YSConfiguration{
         return mHasBootAnimation;
     }
 
+    /**
+     * get the defualt server URL.
+     * 
+     * @return server URL
+     */
+    public String getDefualtServerUrl(){
+        if(mServerUrl == null){
+        	mServerUrl = (String)getProperties(key_defualt_server_url);
+        }
+        
+        return mServerUrl;
+    }
+    
+    /**
+     * get boot apk package name when move to extend screen
+     * 
+     * @return apk package name, "None" means no apk to boot.
+     */
+    public String getBootPackageName(){
+        if(mBootApkPackageName == null){
+        	mBootApkPackageName = (String)getProperties(key_boot_apk_package_name);
+        }
+        
+        return mBootApkPackageName;
+    }
+    
     // get the property by key.
     private String getProperties(String key)
     {

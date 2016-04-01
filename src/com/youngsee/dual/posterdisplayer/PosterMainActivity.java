@@ -27,6 +27,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -62,6 +65,7 @@ import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.SubWindowInfoRef;
 import com.youngsee.dual.common.SysParamManager;
+import com.youngsee.dual.common.YSConfiguration;
 import com.youngsee.dual.customview.AudioView;
 import com.youngsee.dual.customview.DateTimeView;
 import com.youngsee.dual.customview.GalleryView;
@@ -309,6 +313,7 @@ public class PosterMainActivity extends Activity{
 		mHandler.removeCallbacks(rSetWndBgDelay);
 		mHandler.removeCallbacks(rHideOsdPopWndDelay);
 		mHandler.removeCallbacks(rGoToExtendScreenDelay);
+		mHandler.removeCallbacks(rStartMainScreenApk);
 		
 		if (mMainWindow != null)
 		{
@@ -346,6 +351,7 @@ public class PosterMainActivity extends Activity{
 		mHandler.removeCallbacks(rSetWndBgDelay);
 		mHandler.removeCallbacks(rHideOsdPopWndDelay);
 		mHandler.removeCallbacks(rGoToExtendScreenDelay);
+		mHandler.removeCallbacks(rStartMainScreenApk);
 		mHandler.removeMessages(EVENT_CHECK_SET_ONOFFTIME);
 
 		cleanupLayout();
@@ -755,7 +761,7 @@ public class PosterMainActivity extends Activity{
         if (PosterApplication.getInstance().isDaulScreenMode() && 
            !PosterApplication.getInstance().isShowInExtendDisplay())
         {
-        	mHandler.post(rGoToExtendScreenDelay);
+        	mHandler.postDelayed(rGoToExtendScreenDelay, 200);
             PosterApplication.getInstance().setShowInExtendDisplay(true);
         }
 	}
@@ -883,8 +889,14 @@ public class PosterMainActivity extends Activity{
 		public void run() 
 		{
 			sendToExtendScreen();
-			startActivity(PosterApplication.getInstance().getPackageManager()
-					.getLaunchIntentForPackage("com.youngsee.posterdisplayer"));
+		}
+	};
+	
+	private Runnable rStartMainScreenApk = new Runnable() {
+		@Override
+		public void run() 
+		{
+			bootMainScreenApk();
 		}
 	};
 	
@@ -895,6 +907,43 @@ public class PosterMainActivity extends Activity{
     {
         mHandler.removeCallbacks(rGoToExtendScreenDelay);
         ((ExtendDisplayManager)getSystemService(Context.EXTEND_DISPLAY_SERVICE)).moveTo(this);
+        
+        // 启动主屏的APK
+        mHandler.postDelayed(rStartMainScreenApk, 200);
+    }
+    
+    /**
+     * boot main screen apk
+     */
+    private void bootMainScreenApk()
+    {
+        mHandler.removeCallbacks(rStartMainScreenApk);
+        
+        String pkgName = PosterApplication.getInstance().getConfiguration().getBootPackageName();
+		if (apkIsExist(pkgName)) 
+		{
+			startActivity(PosterApplication.getInstance().getPackageManager()
+					.getLaunchIntentForPackage(pkgName));
+		}
+    }
+    
+    private boolean apkIsExist(String packageName)
+    {
+    	if (!TextUtils.isEmpty(packageName) && 
+    		!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(packageName))
+    	{
+    		try
+        	{
+        		ApplicationInfo info = getPackageManager().getApplicationInfo(packageName, PackageManager.GET_UNINSTALLED_PACKAGES);
+        		return (info != null);
+        	} 
+        	catch (NameNotFoundException e)
+        	{
+        		return false;
+        	}
+    	}
+    	
+    	return false;
     }
     
 	public void setPopServiceRunning(boolean isRunning) {

@@ -133,6 +133,7 @@ public class PosterApplication extends Application
     private final int SYSPROP_HWROTATION_DEFAULT = -1;
 
     private boolean                         mShowInExtendDisplay           = false;
+    private boolean                         mIsReceivedBootAction          = false;
     
     public static PosterApplication getInstance()
     {
@@ -430,7 +431,7 @@ public class PosterApplication extends Application
         sysParam.netConn.put("ip", "0.0.0.0");
         
         sysParam.serverSet = new ConcurrentHashMap<String, String>();
-        sysParam.serverSet.put("weburl", "http://123.56.146.48/dn2/services/Heart.asmx");
+        sysParam.serverSet.put("weburl", PosterApplication.getInstance().getConfiguration().getDefualtServerUrl() + WsClient.SERVICE_URL_SUFFIX);
         sysParam.serverSet.put("ftpip", "123.56.146.48");
         sysParam.serverSet.put("ftpport", "21");
         sysParam.serverSet.put("ftpname", "dn4");
@@ -822,6 +823,14 @@ public class PosterApplication extends Application
         mShowInExtendDisplay = flag;
     }
 
+    public boolean isRecvBootAction() {
+        return mIsReceivedBootAction;
+    }
+
+    public void setRecvBootFlag(boolean flag) {
+    	mIsReceivedBootAction = flag;
+    }
+    
     // /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	public static String getCpuId() {

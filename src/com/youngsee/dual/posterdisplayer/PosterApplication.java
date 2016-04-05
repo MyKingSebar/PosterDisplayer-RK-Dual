@@ -133,8 +133,7 @@ public class PosterApplication extends Application
     private final int SYSPROP_HWROTATION_DEFAULT = -1;
 
     private boolean                         mShowInExtendDisplay           = false;
-    private boolean                         mIsReceivedBootAction          = false;
-    
+
     public static PosterApplication getInstance()
     {
         return INSTANCE;
@@ -823,14 +822,6 @@ public class PosterApplication extends Application
         mShowInExtendDisplay = flag;
     }
 
-    public boolean isRecvBootAction() {
-        return mIsReceivedBootAction;
-    }
-
-    public void setRecvBootFlag(boolean flag) {
-    	mIsReceivedBootAction = flag;
-    }
-    
     // /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	public static String getCpuId() {

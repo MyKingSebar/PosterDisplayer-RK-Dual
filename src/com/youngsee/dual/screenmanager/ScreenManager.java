@@ -454,16 +454,6 @@ public class ScreenManager
             {
                 try
                 {
-                	/******************************************************
-                	 * 因为Boot Action在双屏异显调用之前到达，所以等待双屏异显功能就绪   *
-                	 ******************************************************/
-                	if (PosterApplication.getInstance().isRecvBootAction())
-                	{
-                		Logger.i("Wait for extend screen OK..........");
-                		PosterApplication.getInstance().setRecvBootFlag(false);
-                		Thread.sleep(15000);
-                	}
-                	
 					if (AuthorizationManager.getInstance().getStatus() == AuthorizationManager.STATUS_AUTHORIZED) {
                 		if (AuthorizationActivity.INSTANCE != null) {
                 			AuthorizationActivity.INSTANCE.finish();

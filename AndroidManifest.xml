@@ -90,6 +90,7 @@
             android:windowSoftInputMode = "stateHidden|adjustResize">
         </activity>
 
+        <!-- 
         <receiver
             android:name="com.youngsee.dual.posterdisplayer.BootBroadcastReceiver"
             android:enabled="true"
@@ -99,6 +100,7 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+         -->
 
         <service android:name="com.youngsee.posterdisplayer.PopSubService" />
 

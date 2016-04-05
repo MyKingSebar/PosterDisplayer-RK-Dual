@@ -20,9 +20,10 @@ public class BootBroadcastReceiver extends BroadcastReceiver
     {
         if (intent.getAction().equals(Actions.BOOT_ACTION))
         {
-        	PosterApplication.getInstance().setRecvBootFlag(true);
+        	/*
             context.startActivity(new Intent(context, PosterMainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            */
         }
     }
 }

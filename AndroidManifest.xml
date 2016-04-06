@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     coreApp="true"
     package="com.youngsee.dual.posterdisplayer"
-    android:versionCode="4714"
-    android:versionName="4.7.1.4" >
+    android:versionCode="4715"
+    android:versionName="4.7.1.5" >
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -89,18 +89,6 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode = "stateHidden|adjustResize">
         </activity>
-
-        <!-- 
-        <receiver
-            android:name="com.youngsee.dual.posterdisplayer.BootBroadcastReceiver"
-            android:enabled="true"
-            android:exported="false"
-            android:label="SystemBootUpReceiver" >
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-         -->
 
         <service android:name="com.youngsee.posterdisplayer.PopSubService" />
 

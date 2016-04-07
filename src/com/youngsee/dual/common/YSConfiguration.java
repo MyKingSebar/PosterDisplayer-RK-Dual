@@ -15,9 +15,9 @@ public class YSConfiguration{
     private final static String    configFileName          = "config.properties";
     
     private final static String    key_feature             = "feature";
-    private final static String    key_need_bootanimation  = "need_boot_animation";
     private final static String    key_defualt_server_url  = "defualt_server_url";
     private final static String    key_boot_apk_package_name  = "boot_apk_package_name";
+    private final static String    key_install_ysctrl      = "install_ysctrl";
     
     public final static String     FEATURE_CODE_YUESHI     = "YueShi";
     public final static String     FEATURE_CODE_COMMON     = "common";
@@ -32,9 +32,9 @@ public class YSConfiguration{
     private static Application     mApplication            = null;
     
     private String                 mFeatureCode            = null;
-    private Boolean                mHasBootAnimation       = null;
     private String                 mServerUrl              = null;
     private String                 mBootApkPackageName     = null;
+    private Boolean                mIsNeedInstallYsctrl    = null;
     
     /**
      * Get Configuration by this function to avoid create multiple object of
@@ -63,25 +63,6 @@ public class YSConfiguration{
         
         return mFeatureCode;
     }
-    
-    /**
-     * Check that whether need boot animation
-     * 
-     * @return
-     */
-    public Boolean hasBootAnimation(){
-        if(mHasBootAnimation == null){
-            String temp = getProperties(key_need_bootanimation);
-            if(temp != null){
-                mHasBootAnimation = Boolean.valueOf(temp);
-            }
-            else{
-                mHasBootAnimation = false;
-            }
-        }
-        
-        return mHasBootAnimation;
-    }
 
     /**
      * get the defualt server URL.
@@ -109,6 +90,24 @@ public class YSConfiguration{
         return mBootApkPackageName;
     }
     
+    /**
+     * Whether need install install YSSysCtroller.apk.
+     * 
+     * @return
+     */
+    public Boolean isInstallYsctrl(){
+        if(mIsNeedInstallYsctrl == null){
+            String temp = getProperties(key_install_ysctrl);
+            if(temp != null){
+            	mIsNeedInstallYsctrl = Boolean.valueOf(temp);
+            }
+            else{
+            	mIsNeedInstallYsctrl = false;
+            }
+        }
+        
+        return mIsNeedInstallYsctrl;
+    }
     // get the property by key.
     private String getProperties(String key)
     {

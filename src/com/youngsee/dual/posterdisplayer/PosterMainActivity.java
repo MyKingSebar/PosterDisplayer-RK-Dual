@@ -8,8 +8,6 @@
 package com.youngsee.dual.posterdisplayer;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,7 +17,6 @@ import java.util.Set;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -48,7 +45,6 @@ import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -63,6 +59,7 @@ import com.youngsee.dual.authorization.AuthorizationManager;
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
+import com.youngsee.dual.common.PackageInstaller;
 import com.youngsee.dual.common.SubWindowInfoRef;
 import com.youngsee.dual.common.SysParamManager;
 import com.youngsee.dual.common.YSConfiguration;
@@ -95,7 +92,7 @@ public class PosterMainActivity extends Activity{
 
 	private Intent popService = null;
 	private boolean isPopServiceRunning = false; // 插播字幕
-	
+
 	private Dialog mUpdateProgramDialog = null;
 	private InternalReceiver mInternalReceiver = null;
 	
@@ -121,39 +118,28 @@ public class PosterMainActivity extends Activity{
 		Logger.d("====>PosterMainActivity onCreate: " + getIntent().toString());
 		
 		INSTANCE = this;
-		
+
 		// 初始安装APK时，需拷贝YSSysCtroller.apk
-		/*
-        int versionCode = PosterApplication.getInstance().getVerCode();
-        SharedPreferences sharedPreferences = getSharedPreferences("ys_poster_displayer", Activity.MODE_PRIVATE);
-        int installed = sharedPreferences.getInt("monitorInstalled", 0);
-        int installedVersion = sharedPreferences.getInt("versionCode", 0);
-        if(installed == 0 || versionCode != installedVersion)
-        {
-            // Copy system ctrl APK
-            String controller = null;
-            if (PosterApplication.getInstance().getConfiguration().hasEncryptionChip())
-            {
-                controller = retrieveApkFromAssets("YSSysController-ENC.apk");
-            }
-            else
-            {
-                controller = retrieveApkFromAssets("YSSysController.apk");
-            }
-            
-            if (!TextUtils.isEmpty(controller))
-            {
-                PackageInstaller install = new PackageInstaller();
-                if (install.installSystemPkg(controller))
-                {
-                    SharedPreferences.Editor editor = sharedPreferences.edit();
-                    editor.putInt("monitorInstalled", 1);
-                    editor.putInt("versionCode", versionCode);
-                    editor.commit();
-                }
-            }
-        }
-        */
+		if (PosterApplication.getInstance().getConfiguration().isInstallYsctrl()) 
+		{
+			int versionCode = PosterApplication.getInstance().getVerCode();
+			SharedPreferences sharedPreferences = getSharedPreferences("ys_poster_displayer", Activity.MODE_PRIVATE);
+			int installed = sharedPreferences.getInt("monitorInstalled", 0);
+			int installedVersion = sharedPreferences.getInt("versionCode", 0);
+			if (installed == 0 || versionCode != installedVersion) 
+			{
+				// Copy system ctrl APK
+				PackageInstaller install = new PackageInstaller();
+				String controller = install.retrieveSourceFromAssets("YSSysController.apk");
+				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller)) 
+				{
+				    SharedPreferences.Editor editor = sharedPreferences.edit();
+					editor.putInt("monitorInstalled", 1);
+					editor.putInt("versionCode", versionCode);
+					editor.commit();
+				}
+			}
+		}
         
 		// 初始化背景颜色
 		mMainLayout = (FrameLayout) findViewById(R.id.pgmroot);
@@ -488,41 +474,6 @@ public class PosterMainActivity extends Activity{
 		}
 	}
 
-    private String retrieveApkFromAssets(String packageName){
-        File filePath = this.getFilesDir();
-        StringBuilder cachePath = new StringBuilder();
-        cachePath.append(filePath.getAbsolutePath());
-        cachePath.append("/");
-        cachePath.append(packageName);
-        
-        try{
-            File file = new File(cachePath.toString());
-            if(!file.exists()){
-                file.createNewFile();
-            }
-            InputStream is = getAssets().open(packageName);
-            FileOutputStream fos = new FileOutputStream(file);
-    
-            byte[] temp = new byte[1024];
-            int i = 0;
-            while((i = is.read(temp)) != -1){
-                fos.write(temp, 0, i);
-            }
-            fos.flush();
-            fos.close();
-            is.close();
-        }
-        catch(IOException e){
-            // Toast.makeText(mContext, e.getMessage(), 2000).show();
-            Builder builder = new Builder(this);
-            builder.setMessage(e.getMessage());
-            builder.show();
-            e.printStackTrace();
-        }
-        
-        return cachePath.toString();
-    }
-	
 	private class InternalReceiver extends BroadcastReceiver {
 		@Override
         public void onReceive(Context context, Intent intent)
@@ -820,7 +771,7 @@ public class PosterMainActivity extends Activity{
         {
             if (picInfo == null || FileUtils.mediaIsPicFromNet(picInfo))
             {
-                Log.e("load picture error", "picture is come from network");
+                Logger.e("picture is come from network");
                 return null;
             }
 

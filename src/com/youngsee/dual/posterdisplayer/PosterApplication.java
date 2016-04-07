@@ -430,7 +430,7 @@ public class PosterApplication extends Application
         sysParam.netConn.put("ip", "0.0.0.0");
         
         sysParam.serverSet = new ConcurrentHashMap<String, String>();
-        sysParam.serverSet.put("weburl", PosterApplication.getInstance().getConfiguration().getDefualtServerUrl() + WsClient.SERVICE_URL_SUFFIX);
+        sysParam.serverSet.put("weburl", getConfiguration().getDefualtServerUrl() + WsClient.SERVICE_URL_SUFFIX);
         sysParam.serverSet.put("ftpip", "123.56.146.48");
         sysParam.serverSet.put("ftpport", "21");
         sysParam.serverSet.put("ftpname", "dn4");

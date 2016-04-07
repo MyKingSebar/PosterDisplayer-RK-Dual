@@ -42,9 +42,8 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 
-public abstract class PosterBaseView extends LinearLayout {
+public abstract class PosterBaseView extends FrameLayout {
     protected Context            mContext      = null;
     
     // View attributes

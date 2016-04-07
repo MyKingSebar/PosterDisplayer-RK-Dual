@@ -430,7 +430,7 @@ public class PosterApplication extends Application
         sysParam.netConn.put("ip", "0.0.0.0");
         
         sysParam.serverSet = new ConcurrentHashMap<String, String>();
-        sysParam.serverSet.put("weburl", "http://server.xuanchuanyun.com/dn2/services/Heart.asmx");
+        sysParam.serverSet.put("weburl", getConfiguration().getDefualtServerUrl() + WsClient.SERVICE_URL_SUFFIX);
         sysParam.serverSet.put("ftpip", "ftp.xuanchuanyun.com");
         sysParam.serverSet.put("ftpport", "21");
         sysParam.serverSet.put("ftpname", "ehualu");

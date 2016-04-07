@@ -525,18 +525,17 @@ public class PosterMainActivity extends Activity{
 
 	private void cleanupLayout() 
 	{
+		/**************************
+		 * 注意：辅屏的主窗口不能移除，否 *
+		 * 则SurfaceView将显示不出来    *
+		 **************************/
 		if (mMainWindow != null)
 		{
-			mMainWindow.onViewDestroy();
+			mMainWindow.stopWork();
+			mMainWindow.setMediaList(null);
+			mMainWindow.setViewPosition(0, 0);
+			mMainWindow.setViewSize(0, 0);
 		}
-		
-		if (mSubWndCollection != null)
-        {
-            for (PosterBaseView wnd : mSubWndCollection)
-            {
-                wnd.onViewDestroy();
-            }
-        }
 		
 		// 移除子窗口
 		if (mSubWndCollection != null)
@@ -551,20 +550,11 @@ public class PosterMainActivity extends Activity{
             	subWnd.setVisibility(View.GONE);
             	mMainLayout.removeView(subWnd);
             }
+            
+            mSubWndCollection.clear();
+            mSubWndCollection = null;
         }
-		
-		/**************************
-		 * 注意：辅屏的主窗口不能移除，否 *
-		 * 则SurfaceView将显示不出来    *
-		 **************************/
-		if (mMainWindow != null)
-		{
-			mMainWindow.stopWork();
-			mMainWindow.setMediaList(null);
-			mMainWindow.setViewPosition(0, 0);
-			mMainWindow.setViewSize(0, 0);
-		}
-		
+
 		// 清除背景图片
 		if (mBgImgInfo != null)
 		{

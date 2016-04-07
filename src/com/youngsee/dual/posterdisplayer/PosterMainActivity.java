@@ -216,7 +216,7 @@ public class PosterMainActivity extends Activity{
 			public void onClick(View v) {
 				long clickTime = SystemClock.uptimeMillis();
 				long dtime = clickTime - mLastClickTime;
-				if (mLastClickTime == 0 || dtime < 1000) {
+				if (mLastClickTime == 0 || dtime < 3000) {
 					mCurrentClickCnts++;
 					mLastClickTime = clickTime;
 				} else {

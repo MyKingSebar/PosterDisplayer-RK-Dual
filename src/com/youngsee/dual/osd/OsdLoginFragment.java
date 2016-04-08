@@ -66,11 +66,6 @@ public class OsdLoginFragment extends Fragment
     {
         // 不能将Fragment的视图附加到此回调的容器元素，因此attachToRoot参数必须为false
         View view = inflater.inflate(R.layout.fragment_osd_login, container, false);
-        String code = PosterApplication.getInstance().getConfiguration().getFeatureCode();
-        if(code != null && code.equalsIgnoreCase(YSConfiguration.FEATURE_CODE_YUESHI)){
-            view.findViewById(R.id.RLLoginRoot).setBackgroundResource(R.drawable.welcome1_ys);
-        }
-        
         return view;
     }
     

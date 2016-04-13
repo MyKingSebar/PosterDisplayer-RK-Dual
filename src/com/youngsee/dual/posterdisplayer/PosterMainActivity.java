@@ -44,7 +44,6 @@ import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemClock;
 import android.text.TextUtils;
-import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -56,6 +55,7 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 
 import com.youngsee.dual.authorization.AuthorizationManager;
+import com.youngsee.dual.common.Actions;
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
@@ -119,7 +119,7 @@ public class PosterMainActivity extends Activity{
 		
 		INSTANCE = this;
 
-		// 初始安装APK时，需拷贝YSSysCtroller.apk
+		// 初始安装APK时，需安装YSSysCtroller.apk
 		if (PosterApplication.getInstance().getConfiguration().isInstallYsctrl()) 
 		{
 			int versionCode = PosterApplication.getInstance().getVerCode();
@@ -128,15 +128,18 @@ public class PosterMainActivity extends Activity{
 			int installedVersion = sharedPreferences.getInt("versionCode", 0);
 			if (installed == 0 || versionCode != installedVersion) 
 			{
-				// Copy system ctrl APK
+				// install system ctrl APK
 				PackageInstaller install = new PackageInstaller();
 				String controller = install.retrieveSourceFromAssets("YSSysController.apk");
-				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller)) 
+				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller, "YSSysController.apk")) 
 				{
 				    SharedPreferences.Editor editor = sharedPreferences.edit();
 					editor.putInt("monitorInstalled", 1);
 					editor.putInt("versionCode", versionCode);
 					editor.commit();
+					
+					// start the APK
+					startService(new Intent(Actions.SYSCTRL_SERVICE_ACTION));
 				}
 			}
 		}
@@ -851,7 +854,8 @@ public class PosterMainActivity extends Activity{
         mHandler.removeCallbacks(rStartMainScreenApk);
         
         String pkgName = PosterApplication.getInstance().getConfiguration().getBootPackageName();
-		if (apkIsExist(pkgName)) 
+		if (!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(pkgName) &&
+			apkIsExist(pkgName)) 
 		{
 			startActivity(PosterApplication.getInstance().getPackageManager()
 					.getLaunchIntentForPackage(pkgName));
@@ -860,8 +864,7 @@ public class PosterMainActivity extends Activity{
     
     private boolean apkIsExist(String packageName)
     {
-    	if (!TextUtils.isEmpty(packageName) && 
-    		!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(packageName))
+    	if (!TextUtils.isEmpty(packageName))
     	{
     		try
         	{

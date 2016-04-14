@@ -479,6 +479,54 @@ public class DbHelper {
         c.close();
     }
     
+    public String getElectricFromDB()
+    {
+        String strElec = null;
+        Cursor c = mContentResolver.query(DbConstants.CONTENTURI_ELECTRIC, null, null, null, null);
+        if (c.moveToFirst())
+        {
+           strElec = c.getString(c.getColumnIndex(DbConstants.ELECTRIC));
+           
+        }
+        c.close();
+        
+        return strElec;
+    }
+    
+    public void setrElectricToDB(String elec)
+    {
+        if (TextUtils.isEmpty(elec))
+        {
+            Logger.i("Electric Code is null.");
+            return;
+        }
+        
+      
+       
+        if (elec == null)
+        {
+            Logger.i("Electric code is null.");
+            return;
+        }
+        
+        Cursor c = mContentResolver.query(DbConstants.CONTENTURI_ELECTRIC, null, null, null, null);
+        if (c.moveToFirst())
+        {
+            long id = c.getLong(c.getColumnIndex(DbConstants._ID));
+            ContentValues cv = new ContentValues();
+            cv.put(DbConstants.ELECTRIC, elec);
+            mContentResolver.update(ContentUris.withAppendedId(DbConstants.CONTENTURI_ELECTRIC, id), cv, null, null);
+        }
+        else
+        {
+            ContentValues cv = new ContentValues();
+            cv.put(DbConstants.ELECTRIC, elec);
+            mContentResolver.insert(DbConstants.CONTENTURI_ELECTRIC, cv);
+        }
+        c.close();
+    }
+    
+    
     
     public void saveSysParamToDB(final SysParam sysParam)
     {

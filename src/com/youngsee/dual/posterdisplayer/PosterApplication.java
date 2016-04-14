@@ -42,6 +42,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.DiskLruCache;
+import com.youngsee.dual.common.ElectricManager;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.ReflectionUtils;
@@ -122,6 +123,7 @@ public class PosterApplication extends Application
 
     private Timer                           mDelPeriodFileTimer            = null;
     private Timer                           mUploadLogTimer                = null;
+    private Timer  							mGetElectricTimer         	   = null;
     
     private AlarmManager mAlarmManager = null;
     
@@ -1546,6 +1548,26 @@ public class PosterApplication extends Application
         };
         mUploadLogTimer.schedule(task, 60000, 24 * 60 * 60 * 1000);
     }
+    
+	public void cancelTimerRunPowerMeter(){
+		if (mGetElectricTimer != null)
+        {
+			mGetElectricTimer.cancel();
+			mGetElectricTimer = null;
+			ElectricManager.getInstance().stopGetElectric();
+        }
+	}
+	
+	public void startTimerRunPowerMeter(){
+		cancelTimerRunPowerMeter();
+		mGetElectricTimer=new Timer();
+		mGetElectricTimer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				ElectricManager.getInstance().startGetElectric();
+			}
+		}, 2000, 24*60*60*1000);
+	}
     
     /**
      * Returns true if the time represented by this Time object occurs before current time.

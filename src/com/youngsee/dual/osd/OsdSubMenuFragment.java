@@ -49,6 +49,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.RuntimeExec;
 import com.youngsee.dual.common.SysOnOffTimeInfo;
@@ -113,7 +114,7 @@ public class OsdSubMenuFragment extends Fragment
     private TextView           about_certNum            = null;
     private TextView           about_connStatus         = null;
     private TextView           about_diskStatus         = null;
-    
+    private TextView		   about_electric           = null;
     private final Handler      mHandler                 = new Handler();
     
     // Action id for login/pw fragment
@@ -792,7 +793,7 @@ public class OsdSubMenuFragment extends Fragment
         about_certNum = (TextView) mMenus[PosterOsdActivity.OSD_ABOUT_ID].findViewById(R.id.about_certNum);
         about_connStatus = (TextView) mMenus[PosterOsdActivity.OSD_ABOUT_ID].findViewById(R.id.about_connStatus);
         about_diskStatus = (TextView) mMenus[PosterOsdActivity.OSD_ABOUT_ID].findViewById(R.id.about_diskStatus);
-        
+        about_electric = (TextView) mMenus[PosterOsdActivity.OSD_ABOUT_ID].findViewById(R.id.about_electric);
         updateAboutView();
     }
     
@@ -809,6 +810,13 @@ public class OsdSubMenuFragment extends Fragment
         about_id.setText(PosterApplication.getCpuId().toUpperCase());
         about_MAC.setText(PosterApplication.getEthFormatMac().toUpperCase());
         about_IP.setText(PosterApplication.getLocalIpAddress());
+		if (!TextUtils.isEmpty(DbHelper.getInstance().getElectricFromDB())) {
+			about_electric.setText(DbHelper.getInstance().getElectricFromDB()+"度");
+		}
+		else
+		{
+			about_electric.setText("未知");
+		}
     }
     
     private void initToolsView()

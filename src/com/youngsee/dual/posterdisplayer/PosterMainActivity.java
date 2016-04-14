@@ -57,6 +57,7 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 
 import com.youngsee.dual.authorization.AuthorizationManager;
+import com.youngsee.dual.common.Actions;
 import com.youngsee.dual.common.Contants;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
@@ -120,7 +121,7 @@ public class PosterMainActivity extends Activity{
 		
 		INSTANCE = this;
 
-		// 初始安装APK时，需拷贝YSSysCtroller.apk
+		// 初始安装APK时，需安装YSSysCtroller.apk
 		if (PosterApplication.getInstance().getConfiguration().isInstallYsctrl()) 
 		{
 			int versionCode = PosterApplication.getInstance().getVerCode();
@@ -129,15 +130,18 @@ public class PosterMainActivity extends Activity{
 			int installedVersion = sharedPreferences.getInt("versionCode", 0);
 			if (installed == 0 || versionCode != installedVersion) 
 			{
-				// Copy system ctrl APK
+				// install system ctrl APK
 				PackageInstaller install = new PackageInstaller();
 				String controller = install.retrieveSourceFromAssets("YSSysController.apk");
-				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller)) 
+				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller, "YSSysController.apk")) 
 				{
 				    SharedPreferences.Editor editor = sharedPreferences.edit();
 					editor.putInt("monitorInstalled", 1);
 					editor.putInt("versionCode", versionCode);
 					editor.commit();
+					
+					// start the APK
+					startService(new Intent(Actions.SYSCTRL_SERVICE_ACTION));
 				}
 			}
 		}
@@ -220,8 +224,14 @@ public class PosterMainActivity extends Activity{
 				PowerOnOffManager.AUTOSCREENOFF_COMMON);
 
 		// 检测是否需要升级新版本
-		if (SysParamManager.getInstance().getAutoUpgrade() == 1) {
+		if (SysParamManager.getInstance().getAutoUpgrade() == 1) 
+		{
 			APKUpdateManager.getInstance().startAutoDetector();
+		}
+		        
+		if (PosterApplication.getInstance().getConfiguration().isMonitorElectric()) 
+		{
+		    PosterApplication.getInstance().startTimerRunPowerMeter();
 		}
 	}
 
@@ -382,6 +392,11 @@ public class PosterMainActivity extends Activity{
 
 		dismissUpdateProgramDialog();
 
+		if (PosterApplication.getInstance().getConfiguration().isMonitorElectric())
+		{
+		   PosterApplication.getInstance().cancelTimerRunPowerMeter();
+		}
+		
 		// 恢复屏幕
 		if (mWklk != null) {
 			mWklk.release();
@@ -852,7 +867,8 @@ public class PosterMainActivity extends Activity{
         mHandler.removeCallbacks(rStartMainScreenApk);
         
         String pkgName = PosterApplication.getInstance().getConfiguration().getBootPackageName();
-		if (apkIsExist(pkgName)) 
+		if (!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(pkgName) &&
+			apkIsExist(pkgName)) 
 		{
 			startActivity(PosterApplication.getInstance().getPackageManager()
 					.getLaunchIntentForPackage(pkgName));
@@ -861,8 +877,7 @@ public class PosterMainActivity extends Activity{
     
     private boolean apkIsExist(String packageName)
     {
-    	if (!TextUtils.isEmpty(packageName) && 
-    		!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(packageName))
+    	if (!TextUtils.isEmpty(packageName))
     	{
     		try
         	{

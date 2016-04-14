@@ -18,6 +18,7 @@ public class YSConfiguration{
     private final static String    key_defualt_server_url  = "defualt_server_url";
     private final static String    key_boot_apk_package_name  = "boot_apk_package_name";
     private final static String    key_install_ysctrl      = "install_ysctrl";
+    private final static String    key_electric_monitor      = "electric_monitor";
     
     public final static String     FEATURE_CODE_YUESHI     = "YueShi";
     public final static String     FEATURE_CODE_COMMON     = "common";
@@ -35,6 +36,7 @@ public class YSConfiguration{
     private String                 mServerUrl              = null;
     private String                 mBootApkPackageName     = null;
     private Boolean                mIsNeedInstallYsctrl    = null;
+    private Boolean                mIsMonitorElectric      = null;
     
     /**
      * Get Configuration by this function to avoid create multiple object of
@@ -108,6 +110,26 @@ public class YSConfiguration{
         
         return mIsNeedInstallYsctrl;
     }
+    
+    /**
+     * Whether monitor Electric.
+     * 
+     * @return
+     */
+    public Boolean isMonitorElectric(){
+        if(mIsMonitorElectric == null){
+            String temp = getProperties(key_electric_monitor);
+            if(temp != null){
+            	mIsMonitorElectric = Boolean.valueOf(temp);
+            }
+            else{
+            	mIsMonitorElectric = false;
+            }
+        }
+        
+        return mIsMonitorElectric;
+    }
+    
     // get the property by key.
     private String getProperties(String key)
     {

@@ -33,9 +33,9 @@ import android.os.Message;
 import android.util.Xml;
 
 import com.youngsee.dual.common.Contants;
-import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.Md5;
+import com.youngsee.dual.common.RuntimeExec;
 import com.youngsee.dual.common.SysParamManager;
 import com.youngsee.dual.ftpoperation.FtpHelper;
 import com.youngsee.dual.logmanager.LogUtils;
@@ -306,7 +306,7 @@ public class WsClient
         // 重启设备，参数立即生效
         if (mServerConfigChanged)
         {
-            //RuntimeExec.getInstance().runRootCmd("reboot");
+            RuntimeExec.getInstance().runRootCmd("reboot");
         }
 
         return true;
@@ -529,11 +529,6 @@ public class WsClient
         }
         else
         {
-            if (!PosterApplication.strogeIsAvailable())
-            {
-                ScreenManager.getInstance().setToNoStorage();
-                Logger.i("the stroge is not available, inform screen manger.");
-            }
             delTempFile();
         }
         return 0;
@@ -613,11 +608,6 @@ public class WsClient
         }
         else
         {
-            if (!PosterApplication.strogeIsAvailable())
-            {
-                ScreenManager.getInstance().setToNoStorage();
-                Logger.i("the stroge is not available, inform screen manger.");
-            }
             delTempFile();
         }
         return 0;
@@ -829,12 +819,6 @@ public class WsClient
      **************************************************/
     private boolean moveTempFile()
     {
-        if (!PosterApplication.strogeIsAvailable())
-        {
-            Logger.e("move temporary file failed, because the stroge is not available.");
-            return false;
-        }
-        
         StringBuilder sb = new StringBuilder();
         sb.append(FileUtils.getHardDiskPath());
         sb.append(File.separator);
@@ -858,7 +842,7 @@ public class WsClient
             {
                 if (files[i].isFile())
                 {
-                    String newPath = PosterApplication.getNewProgramPath();
+                    String newPath = PosterApplication.getProgramPath();
                     name = files[i].getName();
                     sb.setLength(0);
                     if (name.equals(PosterApplication.LOCAL_CAST_FILENAME_T))
@@ -906,7 +890,6 @@ public class WsClient
                         try
                         {
                             FileUtils.moveFileTo(srcFile, dstFile);
-                            DbHelper.getInstance().setPgmPath(newPath);
                         }
                         catch (IOException e)
                         {

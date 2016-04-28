@@ -510,7 +510,7 @@ public class PosterApplication extends Application
     	StringBuilder sb = new StringBuilder();
         sb.append(FileUtils.getLargestExtStorage());
         sb.append(File.separator);
-        sb.append("pgm");
+        sb.append("dualpgm");
         String path = sb.toString();
         
         if(!FileUtils.isExist(path)){

@@ -561,14 +561,14 @@ public class PosterMainActivity extends Activity{
 	// 加载新节目
 	public void loadNewProgram(ArrayList<SubWindowInfoRef> subWndList) 
 	{
-		// Clean old program
-		cleanupLayout();
-		
 		// Create new program windows
         if (subWndList != null)
         {
-            Logger.i("Window number is: " + subWndList.size());
-            
+        	Logger.i("Window number is: " + subWndList.size());
+        	
+    		// Clean old program
+    		cleanupLayout();
+
             // initialize
             int xPos = 0;
             int yPos = 0;
@@ -579,14 +579,12 @@ public class PosterMainActivity extends Activity{
             List<MediaInfoRef> mediaList = null;
             
             PosterBaseView tempSubWnd = null;
-            SubWindowInfoRef subWndInfo = null;
             mSubWndCollection = new HashSet<PosterBaseView>();
             
             // Through the sub window list, and create the correct view for it.
-            for (int i = 0; i < subWndList.size(); i++)
+            for (SubWindowInfoRef subWndInfo : subWndList)
             {
                 tempSubWnd = null;
-                subWndInfo = subWndList.get(i);
                 
                 // 窗体类型和名称
                 if ((wndType = subWndInfo.getSubWindowType()) == null)

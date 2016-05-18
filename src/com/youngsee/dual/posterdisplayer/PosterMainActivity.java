@@ -113,7 +113,7 @@ public class PosterMainActivity extends Activity{
 		super.onCreate(savedInstanceState);
 		PosterApplication.setSystemBarVisible(this, false);
         setContentView(R.layout.activity_main);
-		getWindow().setFormat(PixelFormat.TRANSLUCENT);
+		//getWindow().setFormat(PixelFormat.TRANSLUCENT);
 
 		Logger.d("====>PosterMainActivity onCreate: " + getIntent().toString());
 		
@@ -169,16 +169,16 @@ public class PosterMainActivity extends Activity{
             AuthorizationManager.getInstance().startAuth();
         }
 		
+        // 启动屏幕管理线程
+        if (ScreenManager.getInstance() == null) 
+        {
+     	    ScreenManager.createInstance(this).startRun();
+        }
+		
 		// 启动网络管理线程
 		if (WsClient.getInstance() == null) 
 		{
 			WsClient.createInstance(this).startRun();
-		}
-
-		// 启动屏幕管理线程
-		if (ScreenManager.getInstance() == null) 
-		{
-			ScreenManager.createInstance(this).startRun();
 		}
 
 		// 启动日志输出线程
@@ -573,14 +573,14 @@ public class PosterMainActivity extends Activity{
 	// 加载新节目
 	public void loadNewProgram(ArrayList<SubWindowInfoRef> subWndList) 
 	{
-		// Clean old program
-		cleanupLayout();
-		
 		// Create new program windows
         if (subWndList != null)
         {
-            Logger.i("Window number is: " + subWndList.size());
-            
+        	Logger.i("Window number is: " + subWndList.size());
+        	
+    		// Clean old program
+    		cleanupLayout();
+
             // initialize
             int xPos = 0;
             int yPos = 0;
@@ -591,14 +591,12 @@ public class PosterMainActivity extends Activity{
             List<MediaInfoRef> mediaList = null;
             
             PosterBaseView tempSubWnd = null;
-            SubWindowInfoRef subWndInfo = null;
             mSubWndCollection = new HashSet<PosterBaseView>();
             
             // Through the sub window list, and create the correct view for it.
-            for (int i = 0; i < subWndList.size(); i++)
+            for (SubWindowInfoRef subWndInfo : subWndList)
             {
                 tempSubWnd = null;
-                subWndInfo = subWndList.get(i);
                 
                 // 窗体类型和名称
                 if ((wndType = subWndInfo.getSubWindowType()) == null)

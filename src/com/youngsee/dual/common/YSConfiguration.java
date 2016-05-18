@@ -19,6 +19,8 @@ public class YSConfiguration{
     private final static String    key_boot_apk_package_name  = "boot_apk_package_name";
     private final static String    key_install_ysctrl      = "install_ysctrl";
     private final static String    key_electric_monitor      = "electric_monitor";
+    private final static String    key_loadpgm_when_media_ready = "loadpgm_when_media_ready";
+
     
     public final static String     FEATURE_CODE_YUESHI     = "YueShi";
     public final static String     FEATURE_CODE_COMMON     = "common";
@@ -37,6 +39,8 @@ public class YSConfiguration{
     private String                 mBootApkPackageName     = null;
     private Boolean                mIsNeedInstallYsctrl    = null;
     private Boolean                mIsMonitorElectric      = null;
+    private Boolean                mIsWaitForMediaReady    = null;
+
     
     /**
      * Get Configuration by this function to avoid create multiple object of
@@ -110,6 +114,26 @@ public class YSConfiguration{
         
         return mIsNeedInstallYsctrl;
     }
+
+    /**
+     * Whether need install install YSSysCtroller.apk.
+     * 
+     * @return
+     */
+    public Boolean isWaitForMediaReady(){
+        if(mIsWaitForMediaReady == null){
+            String temp = getProperties(key_loadpgm_when_media_ready);
+            if(temp != null){
+            	mIsWaitForMediaReady = Boolean.valueOf(temp);
+            }
+            else{
+            	mIsWaitForMediaReady = false;
+            }
+        }
+        
+        return mIsWaitForMediaReady;
+    }
+    
     
     /**
      * Whether monitor Electric.

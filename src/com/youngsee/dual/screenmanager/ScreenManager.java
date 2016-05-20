@@ -17,14 +17,20 @@ import java.util.LinkedList;
 import java.util.List;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
 import android.text.format.Time;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.FrameLayout.LayoutParams;
 
 import com.youngsee.dual.authorization.AuthorizationActivity;
 import com.youngsee.dual.authorization.AuthorizationManager;
@@ -32,6 +38,7 @@ import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.Md5;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.SubWindowInfoRef;
+import com.youngsee.dual.customview.RunningView;
 import com.youngsee.dual.ftpoperation.FtpFileInfo;
 import com.youngsee.dual.ftpoperation.FtpHelper;
 import com.youngsee.dual.logmanager.Logger;
@@ -72,6 +79,7 @@ public class ScreenManager
     private final static int     EVENT_MEDIA_READY_SHOW_PROGRAM = 0x8004;
 
     private waitForMediaReady    mWaitForMediaReadyThread  = null;
+    
     // 节目信息
     private final class ProgramInfo
     {
@@ -294,6 +302,7 @@ public class ScreenManager
         	mWaitForMediaReadyThread.cancel();
         	mWaitForMediaReadyThread = null;
         }
+        
         FtpHelper.getInstance().cancelAllUploadThread();
         FtpHelper.getInstance().cancelAllDownloadThread();
         
@@ -466,6 +475,7 @@ public class ScreenManager
 			} catch (InterruptedException e2) {
 				e2.printStackTrace();
 			}
+            
             mNormalPgmFilePath = obtainNormalPgmFilePath();
             mUrgentPgmFilePath = obtainUrgentPgmFilePath();
             mUrgentProgramInfoList = getProgramScheduleFromXml(mUrgentPgmFilePath);
@@ -1947,7 +1957,9 @@ public class ScreenManager
         			// 准备参数
                     Bundle bundle = new Bundle();
                     bundle.putSerializable("subwindowlist", (Serializable) mSubWndList);
-                    
+                    if(runningView!=null){
+                    	Logger.i(runningView);
+                    }
                     // 发送消息
                     Message msg = mHandler.obtainMessage();
                     msg.what = EVENT_MEDIA_READY_SHOW_PROGRAM;
@@ -1969,6 +1981,9 @@ public class ScreenManager
         }
     }
 	
+	private RunningView runningView= null ;
+	
+	@TargetApi(Build.VERSION_CODES.KITKAT)
 	private void LoadProgram(ArrayList<SubWindowInfoRef> subWndList)
 	{
 		boolean isWaitMeidaReady = PosterApplication.getInstance().getConfiguration().isWaitForMediaReady();
@@ -1980,6 +1995,18 @@ public class ScreenManager
 				mWaitForMediaReadyThread.cancel();
 			}
 			
+			//显示runningView
+			if(runningView==null&&mContext!=null){
+				runningView=new RunningView(mContext);
+				FrameLayout.LayoutParams mLayoutParams=new FrameLayout.LayoutParams(new FrameLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+				mLayoutParams.gravity=Gravity.CENTER|Gravity.BOTTOM;
+				FrameLayout frame=new FrameLayout(mContext);
+				frame.addView(runningView);
+				
+				 ((PosterMainActivity) mContext).addContentView(frame, mLayoutParams);
+			}else{
+				runningView.setVisibility(View.VISIBLE);
+			}
 			mWaitForMediaReadyThread = new waitForMediaReady();
 			mWaitForMediaReadyThread.setWndList(subWndList);
 			mWaitForMediaReadyThread.start();
@@ -2007,8 +2034,14 @@ public class ScreenManager
             	LoadProgram((ArrayList<SubWindowInfoRef>) msg.getData().getSerializable("subwindowlist"));
                 mLoadProgramDone = true;
                 return; 
+            
             case EVENT_SHOW_IDLE_PROGRAM:
             case EVENT_MEDIA_READY_SHOW_PROGRAM:
+            	
+            	if(runningView!=null){
+            		runningView.setVisibility(View.GONE);
+            	
+            	}
                 if (mContext instanceof PosterMainActivity)
                 {
                     ((PosterMainActivity) mContext).loadNewProgram((ArrayList<SubWindowInfoRef>) msg.getData().getSerializable("subwindowlist"));

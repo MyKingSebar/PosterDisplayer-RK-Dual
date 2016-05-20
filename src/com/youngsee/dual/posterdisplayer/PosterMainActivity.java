@@ -32,7 +32,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.drawable.BitmapDrawable;
@@ -57,6 +56,7 @@ import android.widget.PopupWindow;
 import com.youngsee.dual.authorization.AuthorizationManager;
 import com.youngsee.dual.common.Actions;
 import com.youngsee.dual.common.Contants;
+import com.youngsee.dual.common.ElectricManager;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.PackageInstaller;
@@ -229,7 +229,7 @@ public class PosterMainActivity extends Activity{
 		        
 		if (PosterApplication.getInstance().getConfiguration().isMonitorElectric()) 
 		{
-		    PosterApplication.getInstance().startTimerRunPowerMeter();
+		    ElectricManager.getInstance().startTimerRunPowerMeter();
 		}
 	}
 
@@ -392,7 +392,7 @@ public class PosterMainActivity extends Activity{
 
 		if (PosterApplication.getInstance().getConfiguration().isMonitorElectric())
 		{
-		   PosterApplication.getInstance().cancelTimerRunPowerMeter();
+		   ElectricManager.getInstance().cancelTimerRunPowerMeter();
 		}
 		
 		// 恢复屏幕

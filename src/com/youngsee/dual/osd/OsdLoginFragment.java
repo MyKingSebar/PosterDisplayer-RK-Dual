@@ -8,10 +8,9 @@
 package com.youngsee.dual.osd;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Fragment;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
@@ -34,6 +33,8 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.youngsee.dual.common.DialogUtil;
+import com.youngsee.dual.common.DialogUtil.DialogDoubleButtonListener;
 import com.youngsee.dual.common.SysParamManager;
 import com.youngsee.dual.common.YSConfiguration;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
@@ -42,8 +43,7 @@ import com.youngsee.dual.posterdisplayer.PosterOsdActivity;
 
 public class OsdLoginFragment extends Fragment
 {
-    private static final String OSD_DEFAULT_PWD    = "123456";
-    
+   
     private Editor              mEditor            = null;
     private SharedPreferences   mSharedPreferences = null;
 
@@ -59,6 +59,7 @@ public class OsdLoginFragment extends Fragment
     
     private boolean             mIsInit         = false;
     
+    private Dialog 										dlgModMsg              								= null;
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
@@ -124,7 +125,7 @@ public class OsdLoginFragment extends Fragment
      */
     private void initLoginOsdFragment()
     {
-    	mSharedPreferences = getActivity().getSharedPreferences(PosterOsdActivity.OSD_CONFIG, Context.MODE_PRIVATE);
+        mSharedPreferences = getActivity().getSharedPreferences(PosterOsdActivity.OSD_CONFIG, Context.MODE_PRIVATE);
         mEditor = mSharedPreferences.edit();
         
         mOsdExit = (LinearLayout) getActivity().findViewById(R.id.osd_login_exit);
@@ -185,34 +186,40 @@ public class OsdLoginFragment extends Fragment
                         {
                             PosterOsdActivity.INSTANCE.setDismissTime();
                         }
-                      //获取rootInvisibleHeight在窗体的不可视区域高度(被其他View遮挡的区域高度)  
+                        
+                       //获取rootInvisibleHeight在窗体的不可视区域高度(被其他View遮挡的区域高度)  
                         int rootInvisibleHeight = decorView.getRootView().getHeight() - rect.bottom;  
                         //若不可视区域高度大于150，则键盘显示  
-                        if (rootInvisibleHeight > 150) {  
+                        if (rootInvisibleHeight > 150) 
+                        {  
                             int[] location = new int[2];  
-                            //获取当前窗体内的绝对坐标,location[0]-->x坐标,location[1]-->y坐标
+                            //获取scrollToView在窗体的坐标  
                             mOsdLoginBtn.getLocationInWindow(location);  
+                            
                             //计算srollHeight滚动高度，使scrollToView在可见区域  
                             int srollHeight = (location[1] + mOsdLoginBtn.getHeight()) - rect.bottom; 
-                            if(srollHeight>50){ 
+                            if(srollHeight>0)
+                            { 
                             	 decorView.scrollTo(0, srollHeight);  
                             }
-                        } else {  
+                        } 
+                        else 
+                        {  
                             // 无需滚动 
                         	decorView.scrollTo(0, 0);  
                         } 
                     }
-            	}       	
-		    }  
-		});
-
+                }
+            }  
+        });
+        
         mOsdLoginBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v)
             {
                 String spwd = SysParamManager.getInstance().getSysPasswd();
                 if ((!TextUtils.isEmpty(spwd) && spwd.equals(mEnterPwd.getText().toString()))
-                    || OSD_DEFAULT_PWD.equals(mEnterPwd.getText().toString()))
+                    || SysParamManager.getInstance().getSysPasswd().equals(mEnterPwd.getText().toString()))
                 {
                 	//登陆成功 view回到原位置
     				getActivity().getWindow().peekDecorView().scrollTo(0, 0);
@@ -245,7 +252,7 @@ public class OsdLoginFragment extends Fragment
             {
             	String spwd = SysParamManager.getInstance().getSysPasswd();
                 if ((!TextUtils.isEmpty(spwd) && spwd.equals(mEnterPwd.getText().toString()))
-                    || OSD_DEFAULT_PWD.equals(mEnterPwd.getText().toString()))
+                    || SysParamManager.getInstance().getSysPasswd().equals(mEnterPwd.getText().toString()))
                 {
                     mEditor.putBoolean(PosterOsdActivity.OSD_ISMEMORY, isChecked);
                     mEditor.commit();
@@ -285,30 +292,46 @@ public class OsdLoginFragment extends Fragment
         {
             vg.removeAllViewsInLayout();
         }
-        new AlertDialog.Builder(getActivity()).setTitle(R.string.login_modifyrmsg).setView(mResetView)
-                .setPositiveButton(R.string.enter, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which)
-                    {
-                        String old_Str = SysParamManager.getInstance().getSysPasswd();
-                        if (mOldPwd.getText().toString().equals(old_Str) && 
-                           !mOldPwd.getText().toString().equals(mNewPwd.getText().toString()))
-                        {
-                            SysParamManager.getInstance().setSysPasswd(mNewPwd.getText().toString());
-                        }
-                        else if(mOldPwd.getText().toString().equals(mNewPwd.getText().toString()))
-                        {
-                            Toast.makeText(getActivity(), R.string.login_dialog_newpwddifferent, Toast.LENGTH_SHORT).show();
-                        }
-                        else
-                        {
-                            Toast.makeText(getActivity(), R.string.login_dialog_retrywrite, Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                }).setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which)
-                    {
-                        
-                    }
-                }).create().show();
+        dlgModMsg = DialogUtil.showTipsDialog(getActivity(), getString(R.string.login_modifyrmsg), mResetView, getString(R.string.enter), getString(R.string.cancel), new DialogDoubleButtonListener(){
+
+			@Override
+			public void onLeftClick(Context context , View v , int which) {
+				String old_Str = SysParamManager.getInstance().getSysPasswd();
+                if (mOldPwd.getText().toString().equals(old_Str) && 
+                   !mOldPwd.getText().toString().equals(mNewPwd.getText().toString()))
+                {
+                    SysParamManager.getInstance().setSysPasswd(mNewPwd.getText().toString());
+                    Toast.makeText(getActivity(), R.string.login_dialog_msgmodifysuccess,Toast.LENGTH_SHORT).show();;
+                }
+                else if(mOldPwd.getText().toString().equals(mNewPwd.getText().toString()))
+                {
+                    Toast.makeText(getActivity(), R.string.login_dialog_newpwddifferent, Toast.LENGTH_SHORT).show();
+                }
+                else
+                {
+                    Toast.makeText(getActivity(), R.string.login_dialog_retrywrite, Toast.LENGTH_SHORT).show();
+                }
+                if (dlgModMsg != null) {
+                	DialogUtil.hideInputMethod(getActivity(), mResetView, dlgModMsg);
+                	dlgModMsg.dismiss();
+                	dlgModMsg = null;
+				}
+			}
+
+			@Override
+			public void onRightClick(Context context , View v , int which) {
+                if (dlgModMsg != null) {
+                	DialogUtil.hideInputMethod(getActivity(), mResetView, dlgModMsg);
+                	dlgModMsg.dismiss();
+                	dlgModMsg = null;
+				}
+			}
+        	
+        }, false);
+        
+        dlgModMsg.show();
+        
+        DialogUtil.dialogTimeOff(dlgModMsg, 90000);
+        
     }
 }

@@ -1,16 +1,18 @@
 package com.youngsee.dual.power;
 
 import com.youngsee.dual.common.Actions;
+import com.youngsee.dual.common.DialogUtil;
+import com.youngsee.dual.common.DialogUtil.DialogSingleButtonListener;
+import com.youngsee.dual.common.RuntimeExec;
 import com.youngsee.dual.common.SysOnOffTimeInfo;
+import com.youngsee.dual.common.YSConfiguration;
 import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
 import com.youngsee.dual.posterdisplayer.PosterOsdActivity;
 import com.youngsee.dual.posterdisplayer.R;
 
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,6 +21,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.text.format.Time;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Toast;
 
 public class PowerOnOffManager {
@@ -54,6 +57,7 @@ public class PowerOnOffManager {
 	private int mCurrentStatus = STATUS_IDLE;
 	
 	private Dialog mAlertDialog = null;
+	private Dialog dlgAutoScreenOff = null;
 	
 	public static PowerOnOffManager getInstance() {
 		if (INSTANCE == null) {
@@ -111,9 +115,11 @@ public class PowerOnOffManager {
             long currTimeMillis = getMillisFromTime(0, currtime.hour,
             		currtime.minute, currtime.second);
             int i, j, k;
+            long tmpTimeMillis = -1;
+    		long latestNextOffTime = -1;
         	for (i = 0; i < systimeinfo.length; i++) {
-        		long tmpTimeMillis = -1;
-        		long latestNextOffTime = -1;
+        		tmpTimeMillis = -1;
+        		latestNextOffTime = -1;
                 for (j = currtime.weekDay, k = 0; k < 7; j = getNextWeekDay(j), k++) {
                     if (((systimeinfo[i].week&(1<<j)) != 0) &&
                     		(systimeinfo[i].offhour != 0xFF)) {
@@ -144,9 +150,11 @@ public class PowerOnOffManager {
             long currTimeMillis = getMillisFromTime(0, currtime.hour,
             		currtime.minute, currtime.second);
             int i, j, k;
+            long tmpTimeMillis = -1;
+    		long latestNextOnTime = -1;
         	for (i = 0; i < systimeinfo.length; i++) {
-        		long tmpTimeMillis = -1;
-        		long latestNextOnTime = -1;
+        		tmpTimeMillis = -1;
+        		latestNextOnTime = -1;
                 for (j = currtime.weekDay, k = 0; k < 7; j = getNextWeekDay(j), k++) {
                     if (((systimeinfo[i].week&(1<<j)) != 0) &&
                     		(systimeinfo[i].onhour != 0xFF)) {
@@ -246,21 +254,21 @@ public class PowerOnOffManager {
 	
 	private void showPromptDialog(Context context, String msg) {
 		if (context != null) {
-			mAlertDialog = new AlertDialog.Builder(context)
-					.setIcon(android.R.drawable.ic_dialog_alert)
-	        		.setTitle(R.string.autoscreenoff_prompt_title)
-	        		.setMessage(msg)
-	        		.setCancelable(true)
-	        		.setPositiveButton(R.string.autoscreenoff_prompt_positive,
-	                new DialogInterface.OnClickListener() {
-	                    @Override
-	                    public void onClick(DialogInterface dialog, int which) {
-	                    	mHandler.removeMessages(EVENT_ALERTDIALOG_TIMEOUT);
-	                    	mAlertDialog = null;
-	                    }
-	                }).create();
-			mAlertDialog.show();
-			//mHandler.sendEmptyMessageDelayed(EVENT_ALERTDIALOG_TIMEOUT, DEFAULT_ALERTDIALOG_TIMEOUT);
+			dlgAutoScreenOff = DialogUtil.showTipsDialog(context, context.getString(R.string.autoscreenoff_prompt_title), msg, context.getString(R.string.autoscreenoff_prompt_positive), new DialogSingleButtonListener() {
+				
+				@Override
+				public void onSingleClick(Context context , View v , int which) {
+					mHandler.removeMessages(EVENT_ALERTDIALOG_TIMEOUT);
+					if (dlgAutoScreenOff != null) {
+						dlgAutoScreenOff.dismiss();
+						dlgAutoScreenOff = null;
+					}
+				}
+			}, false);
+			
+			dlgAutoScreenOff.show();
+			
+			DialogUtil.dialogTimeOff(dlgAutoScreenOff, 90000);
 		}
 	}
 	

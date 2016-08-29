@@ -19,6 +19,7 @@ public class YSConfiguration{
     private final static String    key_boot_apk_package_name  = "boot_apk_package_name";
     private final static String    key_install_ysctrl      = "install_ysctrl";
     private final static String    key_loadpgm_when_media_ready = "loadpgm_when_media_ready";
+	private final static String     quit_dialog_show= "quit_dialog_show";
     
     public final static String     FEATURE_CODE_YUESHI     = "YueShi";
     public final static String     FEATURE_CODE_COMMON     = "common";
@@ -37,6 +38,9 @@ public class YSConfiguration{
     private String                 mBootApkPackageName     = null;
     private Boolean                mIsNeedInstallYsctrl    = null;
     private Boolean                mIsWaitForMediaReady    = null;
+    private Boolean                mIsNeedQuitDialog    = null;
+    
+
     
     /**
      * Get Configuration by this function to avoid create multiple object of
@@ -109,6 +113,20 @@ public class YSConfiguration{
         }
         
         return mIsNeedInstallYsctrl;
+    }
+    
+    public Boolean showQuitDialog(){
+        if(mIsNeedQuitDialog == null){
+            String temp = getProperties(quit_dialog_show);
+            if(temp != null){
+            	mIsNeedQuitDialog = Boolean.valueOf(temp);
+            }
+            else{
+            	mIsNeedQuitDialog = false;
+            }
+        }
+        
+        return mIsNeedQuitDialog;
     }
     
     /**

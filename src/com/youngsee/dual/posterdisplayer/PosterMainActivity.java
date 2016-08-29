@@ -13,14 +13,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Timer;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -48,14 +47,18 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
-
+import android.widget.Toast;
 import com.youngsee.dual.authorization.AuthorizationManager;
 import com.youngsee.dual.common.Actions;
 import com.youngsee.dual.common.Contants;
+import com.youngsee.dual.common.DbHelper;
+import com.youngsee.dual.common.DialogUtil;
+import com.youngsee.dual.common.DialogUtil.DialogDoubleButtonListener;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.MediaInfoRef;
 import com.youngsee.dual.common.PackageInstaller;
@@ -73,121 +76,136 @@ import com.youngsee.dual.customview.YSWebView;
 import com.youngsee.dual.logmanager.LogManager;
 import com.youngsee.dual.logmanager.LogUtils;
 import com.youngsee.dual.logmanager.Logger;
+import com.youngsee.dual.multicast.MulticastCommon;
+import com.youngsee.dual.multicast.MulticastManager;
+import com.youngsee.dual.multicast.MulticastSyncInfoRef;
 import com.youngsee.dual.osd.UDiskUpdata;
-import com.youngsee.dual.posterdisplayer.R;
 import com.youngsee.dual.power.PowerOnOffManager;
 import com.youngsee.dual.screenmanager.ScreenManager;
 import com.youngsee.dual.update.APKUpdateManager;
 import com.youngsee.dual.webservices.WsClient;
 
-@SuppressLint("Wakelock")
-public class PosterMainActivity extends Activity{
+@SuppressLint({ "Wakelock", "InflateParams" })
+public class PosterMainActivity extends Activity {
 	public static PosterMainActivity INSTANCE = null;
-	
+
 	private WakeLock mWklk = null;
 	private FrameLayout mMainLayout = null;
-	
+
 	private PopupWindow mOsdPupupWindow = null; // OSD 弹出菜单
 
 	private Intent popService = null;
 	private boolean isPopServiceRunning = false; // 插播字幕
 
+	private Dialog mUpdateApkDialog = null;
 	private Dialog mUpdateProgramDialog = null;
-	private InternalReceiver mInternalReceiver = null;
-	
+	private Timer quitHomeTimer = null;
+	private BroadcastReceiver mReceiver = null;
+
 	private MediaInfoRef mBgImgInfo = null;
-	
+
 	private MultiMediaView mMainWindow = null;
-    private Set<PosterBaseView> mSubWndCollection   = null;  // 屏幕布局信息
+	private Set<PosterBaseView> mSubWndCollection = null; // 屏幕布局信息
 
 	private static final int EVENT_CHECK_SET_ONOFFTIME = 0;
 
-	private static int    MAX_CLICK_CNTS = 5;
-	private long          mLastClickTime = 0;
+	private static int MAX_CLICK_CNTS = 5;
+	private long mLastClickTime = 0;
 	private static int mCurrentClickCnts = 0;
-	
+
+	private long mExitTime = 0;
+
+	private Dialog dlg = null;
+	private View mQuitView = null;
+	private String EXIT_DEFAULT_PWD = null;
+
 	@SuppressWarnings("deprecation")
 	@Override
-    protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		PosterApplication.setSystemBarVisible(this, false);
-        setContentView(R.layout.activity_main);
-		//getWindow().setFormat(PixelFormat.TRANSLUCENT);
+		setContentView(R.layout.activity_main);
+		// getWindow().setFormat(PixelFormat.TRANSLUCENT);
 
 		Logger.d("====>PosterMainActivity onCreate: " + getIntent().toString());
-		
+
 		INSTANCE = this;
 
-		// 初始安装APK时，需安装YSSysCtroller.apk
-		if (PosterApplication.getInstance().getConfiguration().isInstallYsctrl()) 
-		{
+		SharedPreferences sharedPreferences = getSharedPreferences("ys_poster_displayer", Activity.MODE_PRIVATE);
+
+		// 初始安装APK时，拷贝YSSysCtroller.apk
+		if (PosterApplication.getInstance().getConfiguration().isInstallYsctrl()) {
 			int versionCode = PosterApplication.getInstance().getVerCode();
-			SharedPreferences sharedPreferences = getSharedPreferences("ys_poster_displayer", Activity.MODE_PRIVATE);
 			int installed = sharedPreferences.getInt("monitorInstalled", 0);
 			int installedVersion = sharedPreferences.getInt("versionCode", 0);
-			if (installed == 0 || versionCode != installedVersion) 
-			{
-				// install system ctrl APK
+			if (installed == 0 || versionCode != installedVersion) {
+				boolean ret1 = false;
+				boolean ret2 = false;
+
 				PackageInstaller install = new PackageInstaller();
 				String controller = install.retrieveSourceFromAssets("YSSysController.apk");
-				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller, "YSSysController.apk")) 
-				{
-				    SharedPreferences.Editor editor = sharedPreferences.edit();
+				if (!TextUtils.isEmpty(controller)) {
+					ret2 = install.installSystemPkg(controller, "YSSysController.apk");
+
+				}
+
+				if (ret1 && ret2) {
+					SharedPreferences.Editor editor = sharedPreferences.edit();
 					editor.putInt("monitorInstalled", 1);
 					editor.putInt("versionCode", versionCode);
 					editor.commit();
-					
-					// start the APK
-					startService(new Intent(Actions.SYSCTRL_SERVICE_ACTION));
+
 				}
 			}
+			// start the APK
+			if (installed == 1)
+				startService(new Intent(Actions.SYSCTRL_SERVICE_ACTION));
 		}
-        
+
 		// 初始化背景颜色
-		mMainLayout = (FrameLayout) findViewById(R.id.pgmroot);
+		mMainLayout = ((FrameLayout) findViewById(R.id.root));
 		mMainLayout.setBackgroundColor(Color.BLACK);
 
-        if (mWklk == null)
-        {
-            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-            mWklk = pm.newWakeLock((PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP), "PosterMain");
-        }
+		if (mWklk == null) {
+			PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+			mWklk = pm.newWakeLock((PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP), "PosterMain");
+		}
 
 		// 唤醒屏幕
-        if (mWklk != null)
-        {
-            mWklk.acquire();
-        }
+		if (mWklk != null) {
+			mWklk.acquire();
+		}
 
 		// 初始化系统参数
 		PosterApplication.getInstance().initAppParam();
 
 		// 检测是否鉴权
-        if (!AuthorizationManager.getInstance().checkAuthStatus(AuthorizationManager.MODE_IMMEDIATE))
-        {
-            AuthorizationManager.getInstance().startAuth();
-        }
-        
-        // 启动屏幕管理线程
-        if (ScreenManager.getInstance() == null) 
-        {
-     	    ScreenManager.createInstance(this).startRun();
-        }
-		
+		if (!AuthorizationManager.getInstance().checkAuthStatus(AuthorizationManager.MODE_IMMEDIATE)) {
+			AuthorizationManager.getInstance().startAuth();
+		}
+
+		// 同步播放节目检测
+		if (DbHelper.getInstance().getPgmSyncFlagFromDB() != MulticastCommon.MC_VALUE_PROGSYNC_CLOSE) {
+			MulticastManager.getInstance().startWork();
+		}
+
+		// 启动屏幕管理线程
+		if (ScreenManager.getInstance() == null) {
+			ScreenManager.createInstance(this).startRun();
+		}
+
 		// 启动网络管理线程
-		if (WsClient.getInstance() == null) 
-		{
+		if (WsClient.getInstance() == null) {
 			WsClient.createInstance(this).startRun();
 		}
 
 		// 启动日志输出线程
-		if (LogUtils.getInstance() == null) 
-		{
+		if (LogUtils.getInstance() == null) {
 			LogUtils.createInstance(this).startRun();
 		}
 
 		// 初始化OSD菜单
-        initOSD();
+		initOSD();
 
 		// 定义OSD菜单弹出方式
 		mMainLayout.setOnClickListener(new OnClickListener() {
@@ -217,23 +235,43 @@ public class PosterMainActivity extends Activity{
 		PosterApplication.getInstance().startTimingUploadLog();
 
 		// 检测定时开关机状态
-		PowerOnOffManager.getInstance().checkAndSetOnOffTime(
-				PowerOnOffManager.AUTOSCREENOFF_COMMON);
+		PowerOnOffManager.getInstance().checkAndSetOnOffTime(PowerOnOffManager.AUTOSCREENOFF_COMMON);
 
 		// 检测是否需要升级新版本
 		if (SysParamManager.getInstance().getAutoUpgrade() == 1) {
 			APKUpdateManager.getInstance().startAutoDetector();
 		}
-	}
 
-	private void initReceiver() {
+		// 监测U盘是否插入
+		mReceiver = new BroadcastReceiver() {
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				String action = intent.getAction();
+				String path = intent.getData().getPath();
+				if ((action.equals(Intent.ACTION_MEDIA_MOUNTED) || action.equals(Intent.ACTION_MEDIA_REMOVED) || action.equals(Intent.ACTION_MEDIA_BAD_REMOVAL)) && FileUtils.isUsbPath(path)) {
+					if (action.equals(Intent.ACTION_MEDIA_MOUNTED)) {
+						String strApkPath = FileUtils.findApkInUdisk();
+						if (!TextUtils.isEmpty(strApkPath)) {
+							showUpdateApkDialog();
+						}
+
+						if (PosterApplication.existsPgmInUdisk(path)) {
+							showUpdateProgramDialog();
+						}
+					} else if (action.equals(Intent.ACTION_MEDIA_REMOVED) || action.equals(Intent.ACTION_MEDIA_BAD_REMOVAL)) {
+						dismissUpdateApkDialog();
+						dismissUpdateProgramDialog();
+					}
+				}
+			}
+		};
+
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(Intent.ACTION_MEDIA_MOUNTED);
 		filter.addAction(Intent.ACTION_MEDIA_REMOVED);
 		filter.addAction(Intent.ACTION_MEDIA_BAD_REMOVAL);
 		filter.addDataScheme("file");
-		mInternalReceiver = new InternalReceiver();
-		registerReceiver(mInternalReceiver, filter);
+		registerReceiver(mReceiver, filter);
 	}
 
 	public void showOsd() {
@@ -241,86 +279,73 @@ public class PosterMainActivity extends Activity{
 			if (mOsdPupupWindow.isShowing()) {
 				mOsdPupupWindow.dismiss();
 			} else {
-				mOsdPupupWindow.showAtLocation(mMainLayout, Gravity.TOP | Gravity.LEFT, 0, 0);
+				mOsdPupupWindow.showAtLocation(mMainLayout, Gravity.TOP | Gravity.START, 0, 0);
 				mHandler.postDelayed(rHideOsdPopWndDelay, 30000);
 			}
 		}
 	}
-	
+
 	@Override
-    public void onStart(){
+	public void onStart() {
 		super.onStart();
-		initReceiver();
 	}
 
 	@Override
-	protected void onResume() 
-	{
-		if (mMainWindow != null)
-		{
+	protected void onResume() {
+		if (mMainWindow != null) {
 			mMainWindow.onViewResume();
 		}
-		
-		if (mSubWndCollection != null)
-        {
-            for (PosterBaseView wnd : mSubWndCollection)
-            {
-                wnd.onViewResume();
-            }
-        }
-		
-		if (TextUtils.isEmpty(ScreenManager.getInstance().getPlayingPgmId()))
-        {
-            LogUtils.getInstance().toAddPLog(0, Contants.PlayProgramStart, ScreenManager.getInstance().getPlayingPgmId(), "", "");
-        }
-		
-	    hideNavigationBar();
-	    
-        if (PowerOnOffManager.getInstance().getCurrentStatus() == PowerOnOffManager.STATUS_STANDBY)
-        {
-            PowerOnOffManager.getInstance().setCurrentStatus(PowerOnOffManager.STATUS_ONLINE);
-            PowerOnOffManager.getInstance().checkAndSetOnOffTime(PowerOnOffManager.AUTOSCREENOFF_URGENT);
-        }
-        
-        super.onResume();
+
+		if (mSubWndCollection != null) {
+			for (PosterBaseView wnd : mSubWndCollection) {
+				wnd.onViewResume();
+			}
+		}
+
+		if (TextUtils.isEmpty(ScreenManager.getInstance().getPlayingPgmId())) {
+			LogUtils.getInstance().toAddPLog(0, Contants.PlayProgramStart, ScreenManager.getInstance().getPlayingPgmId(), "", "");
+		}
+
+		hideNavigationBar();
+
+		if (PowerOnOffManager.getInstance().getCurrentStatus() == PowerOnOffManager.STATUS_STANDBY) {
+			PowerOnOffManager.getInstance().setCurrentStatus(PowerOnOffManager.STATUS_ONLINE);
+			PowerOnOffManager.getInstance().checkAndSetOnOffTime(PowerOnOffManager.AUTOSCREENOFF_URGENT);
+		}
+
+		super.onResume();
 	}
 
 	@Override
-	protected void onPause() 
-	{
+	protected void onPause() {
 		mHandler.removeCallbacks(rSetWndBgDelay);
 		mHandler.removeCallbacks(rHideOsdPopWndDelay);
 		mHandler.removeCallbacks(rGoToExtendScreenDelay);
 		mHandler.removeCallbacks(rStartMainScreenApk);
-		
-		if (mMainWindow != null)
-		{
+
+		if (mMainWindow != null) {
 			mMainWindow.onViewPause();
 		}
-		
-		if (mSubWndCollection != null)
-        {
-            for (PosterBaseView wnd : mSubWndCollection)
-            {
-                wnd.onViewPause();
-            }
-        }
 
-        if (!TextUtils.isEmpty(ScreenManager.getInstance().getPlayingPgmId()))
-        {
-            LogUtils.getInstance().toAddPLog(0, Contants.PlayProgramEnd, ScreenManager.getInstance().getPlayingPgmId(), "", "");
-        }
-        
+		if (mSubWndCollection != null) {
+			for (PosterBaseView wnd : mSubWndCollection) {
+				wnd.onViewPause();
+			}
+		}
+
+		if (!TextUtils.isEmpty(ScreenManager.getInstance().getPlayingPgmId())) {
+			LogUtils.getInstance().toAddPLog(0, Contants.PlayProgramEnd, ScreenManager.getInstance().getPlayingPgmId(), "", "");
+		}
+
 		if (mOsdPupupWindow.isShowing()) {
 			mOsdPupupWindow.dismiss();
 		}
 
 		super.onPause();
 	}
-	
+
 	@Override
-    public void onStop(){
-    	unregisterReceiver(mInternalReceiver);
+	public void onStop() {
 		super.onStop();
 	}
 
@@ -331,11 +356,19 @@ public class PosterMainActivity extends Activity{
 		mHandler.removeCallbacks(rGoToExtendScreenDelay);
 		mHandler.removeCallbacks(rStartMainScreenApk);
 		mHandler.removeMessages(EVENT_CHECK_SET_ONOFFTIME);
+		if (mReceiver != null) {
+			unregisterReceiver(mReceiver);
+		}
 
 		cleanupLayout();
-		
+
 		if (mOsdPupupWindow.isShowing()) {
 			mOsdPupupWindow.dismiss();
+		}
+
+		if (quitHomeTimer != null) {
+			quitHomeTimer.cancel();
+			quitHomeTimer = null;
 		}
 
 		synchronized (this) {
@@ -344,6 +377,8 @@ public class PosterMainActivity extends Activity{
 				isPopServiceRunning = false;
 			}
 		}
+
+		MulticastManager.getInstance().stopWork();
 
 		// 结束屏幕管理线程
 		if (ScreenManager.getInstance() != null) {
@@ -368,11 +403,11 @@ public class PosterMainActivity extends Activity{
 		if (PowerOnOffManager.getInstance() != null) {
 			PowerOnOffManager.getInstance().destroy();
 		}
-		
+
 		if (AuthorizationManager.getInstance() != null) {
 			AuthorizationManager.getInstance().destroy();
 		}
-		
+
 		if (LogManager.getInstance() != null) {
 			LogManager.getInstance().destroy();
 		}
@@ -381,6 +416,7 @@ public class PosterMainActivity extends Activity{
 		PosterApplication.getInstance().cancelTimingDel();
 		PosterApplication.getInstance().cancelTimingUploadLog();
 
+		dismissUpdateApkDialog();
 		dismissUpdateProgramDialog();
 
 		// 恢复屏幕
@@ -395,20 +431,67 @@ public class PosterMainActivity extends Activity{
 	}
 
 	@Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if( hasFocus ) {
-            hideNavigationBar();
-        }
-    }
-	
+	public void onWindowFocusChanged(boolean hasFocus) {
+		super.onWindowFocusChanged(hasFocus);
+		if (hasFocus) {
+			hideNavigationBar();
+		}
+	}
+
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		switch (keyCode) {
 		case KeyEvent.KEYCODE_BACK:
-			// Log.i("dddd", "back--");
-			return true; // 不响应Back键
+			if ((System.currentTimeMillis() - mExitTime) > 2000) {
+				Toast.makeText(getApplicationContext(), "再按一次返回到桌面", Toast.LENGTH_SHORT).show();
+				mExitTime = System.currentTimeMillis();
+			} else {
 
+				if (PosterApplication.getInstance().getConfiguration().showQuitDialog()) {
+					EXIT_DEFAULT_PWD = SysParamManager.getInstance().getSysPasswd();
+					mQuitView = LayoutInflater.from(this).inflate(R.layout.osd_quit_pwd, null);
+					dlg = DialogUtil.showTipsDialog(PosterMainActivity.this, getString(R.string.dialog_quit), mQuitView, getString(R.string.enter), getString(R.string.cancel), new DialogDoubleButtonListener() {
+
+						@Override
+						public void onLeftClick(Context context, View v, int which) {
+							if (((EditText) mQuitView.findViewById(R.id.quit_password)).getText().toString().equals(EXIT_DEFAULT_PWD)) {
+								Intent mHomeIntent = new Intent(Intent.ACTION_MAIN);
+								mHomeIntent.addCategory(Intent.CATEGORY_HOME);
+								mHomeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+								startActivity(mHomeIntent);
+							} else {
+								Toast.makeText(PosterMainActivity.this, R.string.login_dialog_msgerror, Toast.LENGTH_SHORT).show();
+							}
+							if (dlg != null) {
+								DialogUtil.hideInputMethod(context, v, dlg);
+								dlg.dismiss();
+								dlg = null;
+							}
+						}
+
+						@Override
+						public void onRightClick(Context context, View v, int which) {
+							if (dlg != null) {
+								DialogUtil.hideInputMethod(PosterMainActivity.this, mQuitView, dlg);
+								dlg.dismiss();
+								dlg = null;
+							}
+						}
+
+					}, false);
+
+					dlg.show();
+					DialogUtil.dialogTimeOff(dlg, 90000);
+
+				} else {
+					Intent mHomeIntent = new Intent(Intent.ACTION_MAIN);
+					mHomeIntent.addCategory(Intent.CATEGORY_HOME);
+					mHomeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+					startActivity(mHomeIntent);
+				}
+
+			}
+			return true; // 不响应Back键
 		case KeyEvent.KEYCODE_MENU:
 			enterToOSD(PosterOsdActivity.OSD_MAIN_ID);
 			return true; // 打开OSD主菜单
@@ -424,72 +507,106 @@ public class PosterMainActivity extends Activity{
 
 		case KeyEvent.KEYCODE_MEDIA_STOP:
 			return true; // 主窗口视频暂停
-			
+
 		case KeyEvent.KEYCODE_VOLUME_UP:
 		case KeyEvent.KEYCODE_VOLUME_DOWN:
-		    hideNavigationBar();
-		    break;
+			hideNavigationBar();
+			break;
 		}
 
 		return super.onKeyDown(keyCode, event);
 	}
 
+	private boolean apkIsExist(String packageName) {
+		if (!TextUtils.isEmpty(packageName)) {
+			try {
+				ApplicationInfo info = getPackageManager().getApplicationInfo(packageName, PackageManager.GET_UNINSTALLED_PACKAGES);
+				return (info != null);
+			} catch (NameNotFoundException e) {
+				return false;
+			}
+		}
+
+		return false;
+	}
+
 	private void showUpdateProgramDialog() {
 		if ((mUpdateProgramDialog != null) && mUpdateProgramDialog.isShowing()) {
 			mUpdateProgramDialog.dismiss();
+			mUpdateProgramDialog = null;
 		}
-		mUpdateProgramDialog = new AlertDialog.Builder(this)
-				.setIcon(android.R.drawable.ic_dialog_info).setTitle(R.string.udisk_update_pgm)
-				.setMessage(R.string.udisk_content).setCancelable(true)
-				.setPositiveButton(R.string.udisk_title, new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						UDiskUpdata diskUpdate = new UDiskUpdata(PosterMainActivity.this);
-                        diskUpdate.updateProgram();
-						mUpdateProgramDialog = null;
-					}
-				})
-				.setNegativeButton(R.string.udisk_btn_cancel, new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						mUpdateProgramDialog = null;
-					}
-				}).create();
+
+		mUpdateProgramDialog = DialogUtil.showTipsDialog(this, getString(R.string.udisk_update_pgm), getString(R.string.udisk_content), getString(R.string.udisk_title), getString(R.string.udisk_btn_cancel), new DialogDoubleButtonListener() {
+			@Override
+			public void onRightClick(Context context, View v, int which) {
+				if (mUpdateProgramDialog != null) {
+					mUpdateProgramDialog.dismiss();
+					mUpdateProgramDialog = null;
+				}
+			}
+
+			@Override
+			public void onLeftClick(Context context, View v, int which) {
+				UDiskUpdata diskUpdate = new UDiskUpdata(PosterMainActivity.this);
+				diskUpdate.updateProgram();
+
+				if (mUpdateProgramDialog != null) {
+					mUpdateProgramDialog.dismiss();
+					mUpdateProgramDialog = null;
+				}
+			}
+		}, true);
+
 		mUpdateProgramDialog.show();
+
+		DialogUtil.dialogTimeOff(mUpdateProgramDialog, 90000);
 	}
 
-	public void dismissUpdateProgramDialog() {
-		if ((mUpdateProgramDialog != null)
-				&& mUpdateProgramDialog.isShowing()) {
+	private void dismissUpdateProgramDialog() {
+		if ((mUpdateProgramDialog != null) && mUpdateProgramDialog.isShowing()) {
 			mUpdateProgramDialog.dismiss();
 			mUpdateProgramDialog = null;
 		}
 	}
 
-	private class InternalReceiver extends BroadcastReceiver {
-		@Override
-        public void onReceive(Context context, Intent intent)
-        {
-            String action = intent.getAction();
-            if (action.equals(Intent.ACTION_MEDIA_MOUNTED) || 
-                action.equals(Intent.ACTION_MEDIA_REMOVED) || 
-                action.equals(Intent.ACTION_MEDIA_BAD_REMOVAL))
-            {
-                String path = intent.getData().getPath();
-                if (path.substring(5).startsWith(Contants.UDISK_NAME_PREFIX))
-                {
-                    if (action.equals(Intent.ACTION_MEDIA_MOUNTED) && 
-                        PosterApplication.existsPgmInUdisk(path))
-                    {
-                        showUpdateProgramDialog();
-                    }
-                    else
-                    {
-                        dismissUpdateProgramDialog();
-                    }
-                }
-            }
-        }
+	private void showUpdateApkDialog() {
+		if ((mUpdateApkDialog != null) && mUpdateApkDialog.isShowing()) {
+			mUpdateApkDialog.dismiss();
+			mUpdateApkDialog = null;
+		}
+
+		mUpdateApkDialog = DialogUtil.showTipsDialog(this, getString(R.string.udisk_update_apk), getString(R.string.udisk_content_apk), getString(R.string.udisk_title), getString(R.string.udisk_btn_cancel), new DialogDoubleButtonListener() {
+
+			@Override
+			public void onLeftClick(Context context, View v, int which) {
+				UDiskUpdata diskUpdate = new UDiskUpdata(PosterMainActivity.this);
+				diskUpdate.updateSW();
+
+				if (mUpdateApkDialog != null) {
+					mUpdateApkDialog.dismiss();
+					mUpdateApkDialog = null;
+				}
+			}
+
+			@Override
+			public void onRightClick(Context context, View v, int which) {
+				if (mUpdateApkDialog != null) {
+					mUpdateApkDialog.dismiss();
+					mUpdateApkDialog = null;
+				}
+			}
+
+		}, true);
+
+		mUpdateApkDialog.show();
+		DialogUtil.dialogTimeOff(mUpdateApkDialog, 90000);
+	}
+
+	private void dismissUpdateApkDialog() {
+		if ((mUpdateApkDialog != null) && mUpdateApkDialog.isShowing()) {
+			mUpdateApkDialog.dismiss();
+			mUpdateApkDialog = null;
+		}
 	}
 
 	@SuppressLint("HandlerLeak")
@@ -498,8 +615,7 @@ public class PosterMainActivity extends Activity{
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 			case EVENT_CHECK_SET_ONOFFTIME:
-				PowerOnOffManager.getInstance().checkAndSetOnOffTime(
-						(msg.getData().getInt("type")));
+				PowerOnOffManager.getInstance().checkAndSetOnOffTime((msg.getData().getInt("type")));
 				break;
 			}
 			super.handleMessage(msg);
@@ -515,286 +631,213 @@ public class PosterMainActivity extends Activity{
 		msg.sendToTarget();
 	}
 
-	private void cleanupLayout() 
-	{
+	private void cleanupLayout() {
 		/**************************
-		 * 注意：辅屏的主窗口不能移除，否 *
-		 * 则SurfaceView将显示不出来    *
+		 * 注意：辅屏的主窗口不能移除，否 * 则SurfaceView将显示不出来 *
 		 **************************/
-		if (mMainWindow != null)
-		{
+		if (mMainWindow != null) {
 			mMainWindow.stopWork();
 			mMainWindow.setMediaList(null);
 			mMainWindow.setViewPosition(0, 0);
 			mMainWindow.setViewSize(0, 0);
 		}
-		
+
 		// 移除子窗口
-		if (mSubWndCollection != null)
-        {
-            for (PosterBaseView subWnd : mSubWndCollection)
-            {
-            	subWnd.onViewDestroy();
-            	if (subWnd instanceof MultiMediaView)
-            	{
-            		((MultiMediaView)subWnd).clearViews();
-            	}
-            	subWnd.setVisibility(View.GONE);
-            	mMainLayout.removeView(subWnd);
-            }
-            
-            mSubWndCollection.clear();
-            mSubWndCollection = null;
-        }
+		if (mSubWndCollection != null) {
+			for (PosterBaseView subWnd : mSubWndCollection) {
+				subWnd.onViewDestroy();
+				if (subWnd instanceof MultiMediaView) {
+					((MultiMediaView) subWnd).clearViews();
+				}
+				subWnd.setVisibility(View.GONE);
+				mMainLayout.removeView(subWnd);
+			}
+
+			mSubWndCollection.clear();
+			mSubWndCollection = null;
+		}
 
 		// 清除背景图片
-		if (mBgImgInfo != null)
-		{
-		    mBgImgInfo = null;
-		    mMainLayout.setBackground(null);
+		if (mBgImgInfo != null) {
+			mBgImgInfo = null;
+			mMainLayout.setBackground(null);
 		}
-		
+
 		// 清空上一个节目的缓存
-        PosterApplication.clearMemoryCache();
+		PosterApplication.clearMemoryCache();
 	}
-	
+
 	// 加载新节目
-	public void loadNewProgram(ArrayList<SubWindowInfoRef> subWndList) 
-	{
+	public void loadNewProgram(ArrayList<SubWindowInfoRef> subWndList) {
 		// Create new program windows
-        if (subWndList != null)
-        {
-        	Logger.i("Window number is: " + subWndList.size());
-        	
-    		// Clean old program
-    		cleanupLayout();
+		if (subWndList != null) {
+			Logger.i("Window number is: " + subWndList.size());
 
-            // initialize
-            int xPos = 0;
-            int yPos = 0;
-            int width = 0;
-            int height = 0;
-            String wndName = null;
-            String wndType = null;
-            List<MediaInfoRef> mediaList = null;
-            
-            PosterBaseView tempSubWnd = null;
-            mSubWndCollection = new HashSet<PosterBaseView>();
-            
-            // Through the sub window list, and create the correct view for it.
-            for (SubWindowInfoRef subWndInfo : subWndList)
-            {
-                tempSubWnd = null;
-                
-                // 窗体类型和名称
-                if ((wndType = subWndInfo.getSubWindowType()) == null)
-                {
-                    continue;
-                }
-                wndName = subWndInfo.getSubWindowName();
-                
-                // 窗体位置
-                xPos = subWndInfo.getXPos();
-                yPos = subWndInfo.getYPos();
-                width = subWndInfo.getWidth();
-                height = subWndInfo.getHeight();
-                
-                // 素材
-                mediaList = subWndInfo.getSubWndMediaList();
-                
-                // 创建窗口
-                if (wndType.contains("Main") || wndType.contains("StandbyScreen"))
-                {
-                	if (mMainWindow == null)
-                	{
-                		mMainWindow = new MultiMediaView(this, true);
-                		tempSubWnd = mMainWindow;
-                	}
-                	else
-                	{
-                		mMainWindow.setViewName(wndName);
-                		mMainWindow.setViewType(wndType);
-                		mMainWindow.setMediaList(mediaList);
-                		mMainWindow.setViewPosition(xPos, yPos);
-                		mMainWindow.setViewSize(width, height);
-                        continue;
-                	}
-                }
-                else if (wndType.contains("Background"))
-                {
-                    // 背景图片
-                    if (mediaList != null && mediaList.size() > 0 && "File".equals(mediaList.get(0).source))
-                    {
-                        mBgImgInfo = mediaList.get(0);
-                        setWindowBackgroud();
-                    }
-                    continue;
-                }
-                else if (wndType.contains("Image") || wndType.contains("Weather"))
-                {
-                	tempSubWnd = new MultiMediaView(this);
-                }
-                else if (wndType.contains("Audio"))
-                {
-                    tempSubWnd = new AudioView(this);
-                }
-                else if (wndType.contains("Scroll"))
-                {
-                    tempSubWnd = new MarqueeView(this);
-                }
-                else if (wndType.contains("Clock"))
-                {
-                    tempSubWnd = new DateTimeView(this);
-                }
-                else if (wndType.contains("Gallery"))
-                {
-                    tempSubWnd = new GalleryView(this);
-                }
-                else if (wndType.contains("Web"))
-                {
-                    tempSubWnd = new YSWebView(this);
-                }
-                else if (wndType.contains("Timer"))
-                {
-                    tempSubWnd = new TimerView(this);
-                }
-                
-                // 设置窗口参数，并添加
-                if (tempSubWnd != null)
-                {
-                    tempSubWnd.setViewName(wndName);
-                    tempSubWnd.setViewType(wndType);
-                    tempSubWnd.setMediaList(mediaList);
-                    tempSubWnd.setViewPosition(xPos, yPos);
-                    tempSubWnd.setViewSize(width, height);
-                    mMainLayout.addView(tempSubWnd);
-					if (tempSubWnd != mMainWindow) 
-					{
-						mSubWndCollection.add(tempSubWnd);
+			// Clean old program
+			cleanupLayout();
+
+			// initialize
+			int xPos = 0;
+			int yPos = 0;
+			int width = 0;
+			int height = 0;
+			String wndName = null;
+			String wndType = null;
+			List<MediaInfoRef> mediaList = null;
+
+			PosterBaseView tempSubWnd = null;
+			mSubWndCollection = new HashSet<PosterBaseView>();
+
+			// Through the sub window list, and create the correct view for it.
+			for (SubWindowInfoRef subWndInfo : subWndList) {
+				tempSubWnd = null;
+
+				// 窗体类型和名称
+				if ((wndType = subWndInfo.getSubWindowType()) == null) {
+					continue;
+				}
+				wndName = subWndInfo.getSubWindowName();
+
+				// 窗体位置
+				xPos = subWndInfo.getXPos();
+				yPos = subWndInfo.getYPos();
+				width = subWndInfo.getWidth();
+				height = subWndInfo.getHeight();
+
+				// 素材
+				mediaList = subWndInfo.getSubWndMediaList();
+
+				// 创建窗口
+				if (wndType.contains("Main") || wndType.contains("StandbyScreen")) {
+					tempSubWnd = new MultiMediaView(this, true);
+				} else if (wndType.contains("Background")) {
+					// 背景图片
+					if (mediaList != null && mediaList.size() > 0 && "File".equals(mediaList.get(0).source)) {
+						mBgImgInfo = mediaList.get(0);
+						setWindowBackgroud();
 					}
-                }
-            }
-        }
-        
-        if (mSubWndCollection != null)
-        {
-        	if (mMainWindow != null)
-        	{
-        		mMainWindow.startWork();
-        	}
-        	
-            for (PosterBaseView subWnd : mSubWndCollection)
-            {
-            	subWnd.startWork();
-            }
-        }
+					continue;
+				} else if (wndType.contains("Image") || wndType.contains("Weather")) {
+					tempSubWnd = new MultiMediaView(this);
+				} else if (wndType.contains("Audio")) {
+					tempSubWnd = new AudioView(this);
+				} else if (wndType.contains("Scroll")) {
+					tempSubWnd = new MarqueeView(this);
+				} else if (wndType.contains("Clock")) {
+					tempSubWnd = new DateTimeView(this);
+				} else if (wndType.contains("Gallery")) {
+					tempSubWnd = new GalleryView(this);
+				} else if (wndType.contains("Web")) {
+					tempSubWnd = new YSWebView(this);
+				} else if (wndType.contains("Timer")) {
+					tempSubWnd = new TimerView(this);
+				}
 
-        if (PosterApplication.getInstance().isDaulScreenMode() && 
-           !PosterApplication.getInstance().isShowInExtendDisplay())
-        {
-        	mHandler.postDelayed(rGoToExtendScreenDelay, 200);
-            PosterApplication.getInstance().setShowInExtendDisplay(true);
-        }
+				// 设置窗口参数，并添加
+				if (tempSubWnd != null) {
+					tempSubWnd.setViewName(wndName);
+					tempSubWnd.setViewType(wndType);
+					tempSubWnd.setMediaList(mediaList);
+					tempSubWnd.setViewPosition(xPos, yPos);
+					tempSubWnd.setViewSize(width, height);
+					mMainLayout.addView(tempSubWnd);
+					mSubWndCollection.add(tempSubWnd);
+				}
+			}
+		}
+
+		if (mSubWndCollection != null) {
+			if (mMainWindow != null) {
+				mMainWindow.startWork();
+			}
+
+			for (PosterBaseView subWnd : mSubWndCollection) {
+				subWnd.startWork();
+			}
+		}
+
+		if (PosterApplication.getInstance().isDaulScreenMode() && !PosterApplication.getInstance().isShowInExtendDisplay()) {
+			mHandler.postDelayed(rGoToExtendScreenDelay, 200);
+			PosterApplication.getInstance().setShowInExtendDisplay(true);
+		}
 	}
 
 	/**
-     * Set the background picture of the window.
-     */
-    private boolean setWindowBackgroud()
-    {
-        mHandler.removeCallbacks(rSetWndBgDelay);
-        
-        if (mMainLayout == null || mBgImgInfo == null)
-        {
-            Logger.i("Main layout didn't ready, can't load background image.");
-            mHandler.postDelayed(rSetWndBgDelay, 500);
-            return false;
-        }
-        else if (!FileUtils.isExist(mBgImgInfo.filePath))
-        {
-            Logger.i("Background Image [" + mBgImgInfo.filePath + "] didn't exist.");
-            PosterBaseView.downloadMedia(mBgImgInfo);
-            mHandler.postDelayed(rSetWndBgDelay, 500);
-            return false;
-        }
-        else if (!PosterBaseView.md5IsCorrect(mBgImgInfo))
-        {
-            Logger.i("Background Image [" + mBgImgInfo.filePath + "] verifycode is wrong.");
-            PosterBaseView.downloadMedia(mBgImgInfo);
-            mHandler.postDelayed(rSetWndBgDelay, 500);
-            return false;
-        }
+	 * Set the background picture of the window.
+	 */
+	private boolean setWindowBackgroud() {
+		mHandler.removeCallbacks(rSetWndBgDelay);
 
-        // 读取图片
-        Bitmap mBgBmp = loadBgPicture(mBgImgInfo);
-        
-        // 图片生成失败
-        if (mBgBmp == null)
-        {
-            mHandler.postDelayed(rSetWndBgDelay, 500);
-            return false;
-        }
-        else
-        {
-            // 设置背景
-            mMainLayout.setBackground(new BitmapDrawable(getResources(), mBgBmp));
-        }
-        
-        return true;
-    }
-    
-    private Bitmap loadBgPicture(final MediaInfoRef picInfo)
-    {
-        Bitmap srcBmp = null;
+		if (mMainLayout == null || mBgImgInfo == null) {
+			Logger.i("Main layout didn't ready, can't load background image.");
+			mHandler.postDelayed(rSetWndBgDelay, 500);
+			return false;
+		} else if (!FileUtils.isExist(mBgImgInfo.filePath)) {
+			Logger.i("Background Image [" + mBgImgInfo.filePath + "] didn't exist.");
+			PosterBaseView.downloadMedia(mBgImgInfo);
+			mHandler.postDelayed(rSetWndBgDelay, 500);
+			return false;
+		} else if (!PosterBaseView.md5IsCorrect(mBgImgInfo)) {
+			Logger.i("Background Image [" + mBgImgInfo.filePath + "] verifycode is wrong.");
+			PosterBaseView.downloadMedia(mBgImgInfo);
+			mHandler.postDelayed(rSetWndBgDelay, 500);
+			return false;
+		}
 
-        try
-        {
-            if (picInfo == null || FileUtils.mediaIsPicFromNet(picInfo))
-            {
-                Logger.e("picture is come from network");
-                return null;
-            }
+		// 读取图片
+		Bitmap mBgBmp = loadBgPicture(mBgImgInfo);
 
-            // Create the Stream
-            InputStream isImgBuff = PosterBaseView.createImgInputStream(picInfo);
+		// 图片生成失败
+		if (mBgBmp == null) {
+			mHandler.postDelayed(rSetWndBgDelay, 500);
+			return false;
+		} else {
+			// 设置背景
+			mMainLayout.setBackground(new BitmapDrawable(getResources(), mBgBmp));
+		}
 
-            try
-            {
-                if (isImgBuff != null)
-                {
-                    // Create the bitmap for BitmapFactory
-                    srcBmp = BitmapFactory.decodeStream(isImgBuff, null, PosterBaseView.setBitmapOption(picInfo));
-                }
-            }
-            catch (java.lang.OutOfMemoryError e)
-            {
-                Logger.e("picture is too big, out of memory!");
+		return true;
+	}
 
-                if (srcBmp != null && !srcBmp.isRecycled())
-                {
-                    srcBmp.recycle();
-                    srcBmp = null;
-                }
-                
-                System.gc();
-            }
-            finally
-            {
-                if (isImgBuff != null)
-                {
-                    isImgBuff.close();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-        
-        return srcBmp;
-    }
-    
-    private Runnable rHideOsdPopWndDelay = new Runnable() {
+	private Bitmap loadBgPicture(final MediaInfoRef picInfo) {
+		Bitmap srcBmp = null;
+
+		try {
+			if (picInfo == null || FileUtils.mediaIsPicFromNet(picInfo)) {
+				Logger.e("picture is come from network");
+				return null;
+			}
+
+			// Create the Stream
+			InputStream isImgBuff = PosterBaseView.createImgInputStream(picInfo);
+
+			try {
+				if (isImgBuff != null) {
+					// Create the bitmap for BitmapFactory
+					srcBmp = BitmapFactory.decodeStream(isImgBuff, null, PosterBaseView.setBitmapOption(picInfo));
+				}
+			} catch (java.lang.OutOfMemoryError e) {
+				Logger.e("picture is too big, out of memory!");
+
+				if (srcBmp != null && !srcBmp.isRecycled()) {
+					srcBmp.recycle();
+					srcBmp = null;
+				}
+
+				System.gc();
+			} finally {
+				if (isImgBuff != null) {
+					isImgBuff.close();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return srcBmp;
+	}
+
+	private Runnable rHideOsdPopWndDelay = new Runnable() {
 		@Override
 		public void run() {
 			mHandler.removeCallbacks(rHideOsdPopWndDelay);
@@ -803,144 +846,104 @@ public class PosterMainActivity extends Activity{
 			}
 		}
 	};
-	
-    /**
-     * 如果背景图片不存在，则轮循检测图片文件是否下载完成.
-     */
-    private Runnable rSetWndBgDelay   = new Runnable() {
-        @Override
-        public void run()
-        {
-            setWindowBackgroud();
-        }
-    };
-                                      
+
+	/**
+	 * 如果背景图片不存在，则轮循检测图片文件是否下载完成.
+	 */
+	private Runnable rSetWndBgDelay = new Runnable() {
+		@Override
+		public void run() {
+			setWindowBackgroud();
+		}
+	};
+
 	private Runnable rGoToExtendScreenDelay = new Runnable() {
 		@Override
-		public void run() 
-		{
+		public void run() {
 			sendToExtendScreen();
 		}
 	};
-	
+
 	private Runnable rStartMainScreenApk = new Runnable() {
 		@Override
-		public void run() 
-		{
+		public void run() {
 			bootMainScreenApk();
 		}
 	};
-	
-    /**
-     * go to extend screen
-     */
-    private void sendToExtendScreen()
-    {
-        mHandler.removeCallbacks(rGoToExtendScreenDelay);
-        ((ExtendDisplayManager)getSystemService(Context.EXTEND_DISPLAY_SERVICE)).moveTo(this);
-        
-        // 启动主屏的APK
-        mHandler.postDelayed(rStartMainScreenApk, 200);
-    }
-    
-    /**
-     * boot main screen apk
-     */
-    private void bootMainScreenApk()
-    {
-        mHandler.removeCallbacks(rStartMainScreenApk);
-        
-        String pkgName = PosterApplication.getInstance().getConfiguration().getBootPackageName();
-		if (!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(pkgName) &&
-			apkIsExist(pkgName)) 
-		{
-			startActivity(PosterApplication.getInstance().getPackageManager()
-					.getLaunchIntentForPackage(pkgName));
+
+	/**
+	 * go to extend screen
+	 */
+	private void sendToExtendScreen() {
+		mHandler.removeCallbacks(rGoToExtendScreenDelay);
+		((ExtendDisplayManager) getSystemService(Context.EXTEND_DISPLAY_SERVICE)).moveTo(this);
+
+		// 启动主屏的APK
+		mHandler.postDelayed(rStartMainScreenApk, 200);
+	}
+
+	/**
+	 * boot main screen apk
+	 */
+	private void bootMainScreenApk() {
+		mHandler.removeCallbacks(rStartMainScreenApk);
+
+		String pkgName = PosterApplication.getInstance().getConfiguration().getBootPackageName();
+		if (!YSConfiguration.BOOT_APK_PACKAGE_NAME_NONE.equals(pkgName) && apkIsExist(pkgName)) {
+			startActivity(PosterApplication.getInstance().getPackageManager().getLaunchIntentForPackage(pkgName));
 		}
-    }
-    
-    private boolean apkIsExist(String packageName)
-    {
-    	if (!TextUtils.isEmpty(packageName))
-    	{
-    		try
-        	{
-        		ApplicationInfo info = getPackageManager().getApplicationInfo(packageName, PackageManager.GET_UNINSTALLED_PACKAGES);
-        		return (info != null);
-        	} 
-        	catch (NameNotFoundException e)
-        	{
-        		return false;
-        	}
-    	}
-    	
-    	return false;
-    }
-    
+	}
+
 	public void setPopServiceRunning(boolean isRunning) {
 		synchronized (this) {
 			isPopServiceRunning = isRunning;
 		}
 	}
 
-	public void startPopSub(String text, int playSpeed, int duration,
-			int number, String fontName, int fontColor) 
-	{
-        synchronized (this)
-        {
-            if (isPopServiceRunning == true)
-            {
-                stopService(popService);
-            }
-            
-            popService = new Intent(this, PopSubService.class);
-            popService.putExtra(PopSubService.DURATION, duration);
-            popService.putExtra(PopSubService.NUMBER, number);
-            popService.putExtra(PopSubService.TEXT, text);
-            popService.putExtra(PopSubService.FONTCOLOR, fontColor);
-            popService.putExtra(PopSubService.FONTNAME, (fontName != null) ? fontName.substring(fontName.lastIndexOf(File.separator) + 1, fontName.lastIndexOf(".")) : null);
-            popService.putExtra(PopSubService.SPEED, playSpeed);
-            Logger.i("Start popService");
-            startService(popService);
-            isPopServiceRunning = true;
-        }
+	public void startPopSub(String text, int playSpeed, int duration, int number, String fontName, int fontColor) {
+		synchronized (this) {
+			if (isPopServiceRunning == true) {
+				stopService(popService);
+			}
+
+			popService = new Intent(this, PopSubService.class);
+			popService.putExtra(PopSubService.DURATION, duration);
+			popService.putExtra(PopSubService.NUMBER, number);
+			popService.putExtra(PopSubService.TEXT, text);
+			popService.putExtra(PopSubService.FONTCOLOR, fontColor);
+			popService.putExtra(PopSubService.FONTNAME, (fontName != null) ? fontName.substring(fontName.lastIndexOf(File.separator) + 1, fontName.lastIndexOf(".")) : null);
+			popService.putExtra(PopSubService.SPEED, playSpeed);
+			Logger.i("Start popService");
+			startService(popService);
+			isPopServiceRunning = true;
+		}
 	}
 
-	public void startAudio()
-    {
-    	if (mSubWndCollection != null)
-        {
-            for (PosterBaseView wnd : mSubWndCollection)
-            {
-                if (wnd.getViewName().startsWith("Audio"))
-                {
-                	wnd.onViewResume();
-                }
-            }
-        }
-    }
-    
-    public void stopAudio()
-    {
-    	if (mSubWndCollection != null)
-        {
-            for (PosterBaseView wnd : mSubWndCollection)
-            {
-                if (wnd.getViewName().startsWith("Audio"))
-                {
-                	wnd.onViewPause();
-                }
-            }
-        }
-    }
+	public void startAudio() {
+		if (mSubWndCollection != null) {
+			for (PosterBaseView wnd : mSubWndCollection) {
+				if (wnd.getViewName().startsWith("Audio")) {
+					wnd.onViewResume();
+				}
+			}
+		}
+	}
+
+	public void stopAudio() {
+		if (mSubWndCollection != null) {
+			for (PosterBaseView wnd : mSubWndCollection) {
+				if (wnd.getViewName().startsWith("Audio")) {
+					wnd.onViewPause();
+				}
+			}
+		}
+	}
 
 	public Bitmap combineScreenCap(Bitmap bitmap) {
 
-		if (mMainWindow != null && mMainWindow.needCombineCap()) 
-		{
+		if (mMainWindow != null && mMainWindow.needCombineCap()) {
 			Bitmap videoCap = ((MultiMediaView) mMainWindow).getVideoCap();
-			if (videoCap != null) 
-			{
+			if (videoCap != null) {
 				Bitmap newb = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
 				Canvas cv = new Canvas(newb);
 				cv.drawBitmap(bitmap, 0, 0, null);
@@ -955,7 +958,18 @@ public class PosterMainActivity extends Activity{
 
 		return bitmap;
 	}
-	
+
+	public void syncPlay(MulticastSyncInfoRef syncInfo) {
+		if (mSubWndCollection != null) {
+			for (PosterBaseView wnd : mSubWndCollection) {
+				if (wnd.getViewName().equals(syncInfo.WndName)) {
+					wnd.recvSyncPlayInfo(syncInfo);
+					break;
+				}
+			}
+		}
+	}
+
 	// 初始化OSD弹出菜单
 	private void initOSD() {
 		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -963,120 +977,93 @@ public class PosterMainActivity extends Activity{
 		osdView.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-			    showOsd();
+				showOsd();
 			}
 		});
-		
+
 		mOsdPupupWindow = new PopupWindow(osdView, 100, LinearLayout.LayoutParams.MATCH_PARENT, true);
 		mOsdPupupWindow.setAnimationStyle(R.style.osdAnimation);
 		mOsdPupupWindow.setOutsideTouchable(false);
 		mOsdPupupWindow.setFocusable(true);
 
 		// 初始化点击动作
-		((ImageView) osdView.findViewById(R.id.osd_mainmenu))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_MAIN_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_mainmenu)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_MAIN_ID);
+			}
+		});
 
-		((ImageView) osdView.findViewById(R.id.osd_server))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_SERVER_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_server)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_SERVER_ID);
+			}
+		});
 
-		((ImageView) osdView.findViewById(R.id.osd_clock))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_CLOCK_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_clock)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_CLOCK_ID);
+			}
+		});
 
-		((ImageView) osdView.findViewById(R.id.osd_system))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_SYSTEM_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_system)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_SYSTEM_ID);
+			}
+		});
 
-		((ImageView) osdView.findViewById(R.id.osd_filemanage))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_FILEMANAGER_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_filemanage)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_FILEMANAGER_ID);
+			}
+		});
 
-		((ImageView) osdView.findViewById(R.id.osd_tools))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_TOOL_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_tools)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_TOOL_ID);
+			}
+		});
 
-		((ImageView) osdView.findViewById(R.id.osd_about))
-				.setOnClickListener(new OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						enterToOSD(PosterOsdActivity.OSD_ABOUT_ID);
-					}
-				});
+		((ImageView) osdView.findViewById(R.id.osd_about)).setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				enterToOSD(PosterOsdActivity.OSD_ABOUT_ID);
+			}
+		});
 	}
 
 	private void enterToOSD(int menuId) {
-		//PosterApplication.getInstance().initLanguage();
-		SharedPreferences sharedPreferences = getSharedPreferences(PosterOsdActivity.OSD_CONFIG, MODE_PRIVATE);
-		if (!sharedPreferences.getBoolean(PosterOsdActivity.OSD_ISMEMORY, false)) {
-			Intent intent = new Intent(this, PosterOsdActivity.class);
-			intent.putExtra("menuId", menuId);
-			startActivity(intent);
-		} else {
-			switch (menuId) {
-			case PosterOsdActivity.OSD_SYSTEM_ID:
-				PosterApplication.startApplication(this, Contants.SETTING_PACKAGENAME);
-				break;
-
-			case PosterOsdActivity.OSD_FILEMANAGER_ID:
-				PosterApplication.startApplication(this, Contants.FILEBROWSER_PACKAGENAME);
-				break;
-
-			case PosterOsdActivity.OSD_MAIN_ID:
-			case PosterOsdActivity.OSD_SERVER_ID:
-			case PosterOsdActivity.OSD_CLOCK_ID:
-			case PosterOsdActivity.OSD_TOOL_ID:
-			case PosterOsdActivity.OSD_ABOUT_ID:
-				Intent intent = new Intent(this, PosterOsdActivity.class);
-				intent.putExtra("menuId", menuId);
-				startActivity(intent);
-				break;
-			}
-		}
+		// PosterApplication.getInstance().initLanguage();
+		Intent intent = new Intent(this, PosterOsdActivity.class);
+		intent.putExtra("menuId", menuId);
+		startActivity(intent);
 
 		if (mOsdPupupWindow.isShowing()) {
 			mOsdPupupWindow.dismiss();
 		}
 	}
 
-    private void hideNavigationBar() {
-        int uiFlags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-            | View.SYSTEM_UI_FLAG_FULLSCREEN;     // hide status bar
+	private void hideNavigationBar() {
+		int uiFlags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide
+																																													// nav
+																																													// bar
+				| View.SYSTEM_UI_FLAG_FULLSCREEN; // hide status bar
 
-        if (android.os.Build.VERSION.SDK_INT >= 19){ 
-            uiFlags |= 0x00001000;    //SYSTEM_UI_FLAG_IMMERSIVE_STICKY: hide navigation bars - compatibility: building API level is lower thatn 19, use magic number directly for higher API target level
-        } else {
-            uiFlags |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
-        }
+		if (android.os.Build.VERSION.SDK_INT >= 19) {
+			uiFlags |= 0x00001000; // SYSTEM_UI_FLAG_IMMERSIVE_STICKY: hide
+									// navigation bars - compatibility: building
+									// API level is lower thatn 19, use magic
+									// number directly for higher API target
+									// level
+		} else {
+			uiFlags |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
+		}
 
-        getWindow().getDecorView().setSystemUiVisibility(uiFlags);
-    }
+		getWindow().getDecorView().setSystemUiVisibility(uiFlags);
+	}
 }

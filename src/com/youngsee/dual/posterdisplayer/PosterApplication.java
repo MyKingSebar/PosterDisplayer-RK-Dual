@@ -120,10 +120,10 @@ public class PosterApplication extends Application
     private Timer                           mDelPeriodFileTimer            = null;
     private Timer                           mUploadLogTimer                = null;
     
+	private boolean                         mShowInExtendDisplay           = false;
+	
     private AlarmManager mAlarmManager = null;
     
-    private boolean                         mShowInExtendDisplay           = false;
-
     public static PosterApplication getInstance()
     {
         return INSTANCE;
@@ -135,7 +135,7 @@ public class PosterApplication extends Application
         super.onCreate();
         INSTANCE = this;
         
-        // Allocate memory for the image cache space to program
+        // Allocate memory for the image cache space to normal program
         int cacheSize = (int) Runtime.getRuntime().maxMemory() / 10;
         mImgMemoryCache = new LruCache<String, Bitmap>(cacheSize)
         {
@@ -478,7 +478,7 @@ public class PosterApplication extends Application
         sysParam.delFilePeriodtime = 30;
         sysParam.timeZonevalue = "-8";
         sysParam.passwdvalue = "";
-        sysParam.syspasswdvalue = "";
+        sysParam.syspasswdvalue = "123456";
         sysParam.brightnessvalue = 60;
         sysParam.volumevalue = 60;
         sysParam.hwVervalue = "1.0.0.0";
@@ -516,38 +516,54 @@ public class PosterApplication extends Application
         return path;
     }
     
-    public static boolean existsPgmInUdisk(String path) {
-    	if ((path == null)
-    			|| (path.length() < 13)
-    			|| !path.substring(5).startsWith(Contants.UDISK_NAME_PREFIX)) {
+    public static boolean existsPgmInUdisk(String path) 
+    {
+    	if (!FileUtils.isUsbPath(path)) 
+    	{
     		return false;
     	}
+    	
     	File udisk = new File(path);
-    	if (udisk.getTotalSpace() > 0) {
-    		File[] files = udisk.listFiles();
-    		for (File file : files) {
-    			if (file.isDirectory() && file.getName().endsWith(".pgm")) {
-    				return true;
-    			}
-    		}
-    	} else {
-    		File[] files = udisk.listFiles();
-    		if (files != null) {
-    			for (File file : files) {
-    				if (file.getTotalSpace() > 0) {
+    	File[] files = udisk.listFiles();
+    	if (files != null) 
+		{
+    	    if (udisk.getTotalSpace() > 0) 
+    	    {
+    		    for (File file : files) 
+    		    {
+    			    if (file.isDirectory() && 
+    			    	file.getName().trim().toLowerCase().endsWith(".pgm")) 
+    			    {
+    				    return true;
+    			    }
+    		    }
+    	    } 
+    	    else 
+    	    {
+    			for (File file : files) 
+    			{
+    				if (file.getTotalSpace() > 0) 
+    				{
     					File[] subFiles = file.listFiles();
-    					for (File subFile : subFiles) {
-    		    			if (subFile.isDirectory() && subFile.getName().endsWith(".pgm")) {
-    		    				return true;
-    		    			}
-    		    		}
+    					if (subFiles != null)
+    					{
+    					    for (File subFile : subFiles) 
+    					    {
+    		    			    if (subFile.isDirectory() && 
+    		    			    	subFile.getName().trim().toLowerCase().endsWith(".pgm")) 
+    		    			    {
+    		    				    return true;
+    		    			    }
+    		    		    }
+    					}
     				}
     			}
     		}
     	}
+    	
     	return false;
     }
-    
+
     public static String getGifImagePath(String subDirName)
     {
         StringBuilder sb = new StringBuilder();
@@ -834,7 +850,7 @@ public class PosterApplication extends Application
 		    	FileUtils.createDir(sb.toString());
 	    	}
 		    
-		    sb.append("mac_address.txt");
+		    sb.append("mac_address_dual.txt");
 	    	try {
 		    	FileUtils.createFile(sb.toString());
 	    	} catch (IOException e) {

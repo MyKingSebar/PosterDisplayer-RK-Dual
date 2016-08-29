@@ -27,7 +27,7 @@ public class SerialPort {
 	 * @param baudrate
 	 * @param databits
 	 * @param stopBits
-	 * @param parity Ð£Ñé 'e'->Å¼Ð£Ñé 'o'->Ð£Ñé  'n'->none
+	 * @param parity æ ¡éªŒ 'e'->å¶æ ¡éªŒ 'o'->æ ¡éªŒ  'n'->none
 	 * @throws SecurityException
 	 * @throws IOException
 	 */

@@ -10,8 +10,10 @@ package com.youngsee.dual.posterdisplayer;
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Timer;
 
@@ -99,7 +101,7 @@ public class PosterMainActivity extends Activity {
 
 	private Dialog mUpdateApkDialog = null;
 	private Dialog mUpdateProgramDialog = null;
-	private Timer quitHomeTimer = null;
+
 	private BroadcastReceiver mReceiver = null;
 
 	private MediaInfoRef mBgImgInfo = null;
@@ -139,27 +141,19 @@ public class PosterMainActivity extends Activity {
 			int installed = sharedPreferences.getInt("monitorInstalled", 0);
 			int installedVersion = sharedPreferences.getInt("versionCode", 0);
 			if (installed == 0 || versionCode != installedVersion) {
-				boolean ret1 = false;
-				boolean ret2 = false;
-
+				// install system ctrl APK
 				PackageInstaller install = new PackageInstaller();
 				String controller = install.retrieveSourceFromAssets("YSSysController.apk");
-				if (!TextUtils.isEmpty(controller)) {
-					ret2 = install.installSystemPkg(controller, "YSSysController.apk");
-
-				}
-
-				if (ret1 && ret2) {
+				if (!TextUtils.isEmpty(controller) && install.installSystemPkg(controller, "YSSysController.apk")) {
 					SharedPreferences.Editor editor = sharedPreferences.edit();
 					editor.putInt("monitorInstalled", 1);
 					editor.putInt("versionCode", versionCode);
-					editor.commit();
+					editor.apply();
 
+					// start the APK
 				}
 			}
-			// start the APK
-			if (installed == 1)
-				startService(new Intent(Actions.SYSCTRL_SERVICE_ACTION));
+			startService(new Intent(Actions.SYSCTRL_SERVICE_ACTION));
 		}
 
 		// 初始化背景颜色
@@ -366,11 +360,6 @@ public class PosterMainActivity extends Activity {
 			mOsdPupupWindow.dismiss();
 		}
 
-		if (quitHomeTimer != null) {
-			quitHomeTimer.cancel();
-			quitHomeTimer = null;
-		}
-
 		synchronized (this) {
 			if (isPopServiceRunning) {
 				stopService(popService);
@@ -443,7 +432,6 @@ public class PosterMainActivity extends Activity {
 		switch (keyCode) {
 		case KeyEvent.KEYCODE_BACK:
 			if ((System.currentTimeMillis() - mExitTime) > 2000) {
-				Toast.makeText(getApplicationContext(), "再按一次返回到桌面", Toast.LENGTH_SHORT).show();
 				mExitTime = System.currentTimeMillis();
 			} else {
 
@@ -481,7 +469,7 @@ public class PosterMainActivity extends Activity {
 					}, false);
 
 					dlg.show();
-					DialogUtil.dialogTimeOff(dlg, 90000);
+					DialogUtil.dialogTimeOff(dlg, mQuitView,90000);
 
 				} else {
 					Intent mHomeIntent = new Intent(Intent.ACTION_MAIN);

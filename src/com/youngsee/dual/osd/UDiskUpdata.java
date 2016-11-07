@@ -51,48 +51,49 @@ public class UDiskUpdata {
 	private final static String STANDBYSCREEN_IMAGE_NAME = "background.jpg";
 	private final static String STARTSCREEN_ZIP_NAME = "startup.zip";
 
-	// ==================================== Dialog
-	// ===================================
-	private Dialog dlgUDiskUpdateSuccess = null;
-	private Dialog dlgUDiskUpdateFailure = null;
-	private Dialog dlgStartupImgUpdateFailed = null;
-	private Dialog dlgStartupImgUpdSuc = null;
-	private Dialog dlgStandbyImgUpdFailed = null;
-	private Dialog dlgStbImgUpdSucc = null;
-	private Dialog dlgApkSwUpdFad = null;
-
-	// ================================================================================
-	public UDiskUpdata(Context context) {
-		mContext = context;
-		mProgressDlg = new ProgressDialog(mContext);
-		mProgressDlg.setProgressStyle(ProgressDialog.STYLE_SPINNER); // 设置进度条风格，风格为圆形，旋转的
-		mProgressDlg.setTitle(R.string.tools_dialog_u_disk_update_titles); // 设置ProgressDialog
-																			// 标题
-		mProgressDlg.setMessage(mContext.getString(R.string.tools_dialog_u_disk_update_message)); // 设置ProgressDialog
-																									// 提示信息
-		mProgressDlg.setIndeterminate(false); // 设置ProgressDialog 的进度条是否不明确
-		mProgressDlg.setCancelable(false); // 设置ProgressDialog 是否可以按退回按键取消
-	}
-
-	public void updateProgram() {
-		new UDiskUpdateThread().start();
-	}
-
-	/*
-	 * 更新开机画面
-	 */
-	public void updateStartupPic() {
-		String strFileSavePath = PosterApplication.getStartUpScreenImgPath();
-		updateImgFromUDisk(STARTSCREEN_ZIP_NAME, strFileSavePath);
-	}
-
-	/*
-	 * 更新待机画面
-	 */
-	public void updateStandbyPic() {
-		String strFileSavePath = PosterApplication.getStandbyScreenImgPath();
-		updateImgFromUDisk(STANDBYSCREEN_IMAGE_NAME, strFileSavePath);
-	}
+//====================================		Dialog		===================================    
+    private 						Dialog 				dlgUDiskUpdateSuccess 										= 		null;
+    private 						Dialog 				dlgUDiskUpdateFailure 											= 		null;
+    private 						Dialog 				dlgStartupImgUpdateFailed 									= 		null;
+    private 						Dialog 				dlgStartupImgUpdSuc 											= 		null;
+    private 						Dialog 				dlgStandbyImgUpdFailed 										= 		null;
+    private 						Dialog 				dlgStbImgUpdSucc 												= 		null;
+    private 						Dialog 				dlgApkSwUpdFad 													= 		null;
+//================================================================================
+    public UDiskUpdata(Context context)
+    {
+        mContext = context;
+        mProgressDlg = new ProgressDialog(mContext);
+        mProgressDlg.setProgressStyle(ProgressDialog.STYLE_SPINNER); // 设置进度条风格，风格为圆形，旋转的
+        mProgressDlg.setTitle(R.string.tools_dialog_u_disk_update_titles); // 设置ProgressDialog 标题
+        mProgressDlg.setMessage(mContext.getString(R.string.tools_dialog_u_disk_update_message)); // 设置ProgressDialog
+                                                                                                  // 提示信息
+        mProgressDlg.setIndeterminate(false);  // 设置ProgressDialog 的进度条是否不明确
+        mProgressDlg.setCancelable(false);  // 设置ProgressDialog 是否可以按退回按键取消
+    }
+    
+    public void updateProgram()
+    {
+        new UDiskUpdateThread().start();
+    }
+    
+    /*
+     * 更新开机画面
+     */
+    public void updateStartupPic()
+    {
+        String strFileSavePath = PosterApplication.getStartUpScreenImgPath();
+        updateImgFromUDisk(STARTSCREEN_ZIP_NAME, strFileSavePath);
+    }
+    
+    /*
+     * 更新待机画面
+     */
+    public void updateStandbyPic()
+    {
+        String strFileSavePath = PosterApplication.getStandbyScreenImgPath();
+        updateImgFromUDisk(STANDBYSCREEN_IMAGE_NAME, strFileSavePath);
+    }
 
 	public void updateSW() {
 		String strSWPath = FileUtils.findApkInUdisk();

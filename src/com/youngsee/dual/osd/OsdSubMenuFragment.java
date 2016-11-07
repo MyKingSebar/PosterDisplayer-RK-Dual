@@ -7,9 +7,12 @@
 
 package com.youngsee.dual.osd;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,32 +46,36 @@ import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemLongClickListener;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.youngsee.dual.common.DbHelper;
 import com.youngsee.dual.common.DialogUtil;
 import com.youngsee.dual.common.DialogUtil.DialogDoubleButtonListener;
+import com.youngsee.dual.common.DbHelper;
+import com.youngsee.dual.common.DialogUtil.DialogThreeButtonListener;
 import com.youngsee.dual.common.FileUtils;
 import com.youngsee.dual.common.RuntimeExec;
 import com.youngsee.dual.common.SysOnOffTimeInfo;
 import com.youngsee.dual.common.SysParamManager;
+import com.youngsee.dual.logmanager.LogManager;
+import com.youngsee.dual.logmanager.LogUtils;
 import com.youngsee.dual.logmanager.Logger;
 import com.youngsee.dual.multicast.MulticastCommon;
 import com.youngsee.dual.multicast.MulticastManager;
 import com.youngsee.dual.multicast.MulticastSyncInfoRef;
-import com.youngsee.dual.posterdisplayer.PosterApplication;
 import com.youngsee.dual.posterdisplayer.PosterMainActivity;
-import com.youngsee.dual.posterdisplayer.PosterOsdActivity;
 import com.youngsee.dual.posterdisplayer.R;
+import com.youngsee.dual.posterdisplayer.PosterApplication;
+import com.youngsee.dual.posterdisplayer.PosterOsdActivity;
 import com.youngsee.dual.power.PowerOnOffManager;
 import com.youngsee.dual.screenmanager.ScreenManager;
 import com.youngsee.dual.webservices.WsClient;
@@ -97,7 +104,15 @@ public class OsdSubMenuFragment extends Fragment {
 	private EditText server_ntp_ip = null;
 	private EditText server_ntp_port = null;
 
+	// =====================================================logmanager=================================
+	private final static int CHANGEPALYSET = 0xa000;
+	private final static int CHANGESYSTEMSET = 0xa001;
+	private View logmamagerView = null;
+	private CheckBox playcbLogM = null;
+	private CheckBox systemcbLogM = null;
+	private SharedPreferences spfLogM = null;
 	// ====================================================Clock======================================
+
 	private View mEidtClockView = null;
 	private EditText mOnTimeEditText = null;
 	private EditText mOffTimeEditText = null;
@@ -147,8 +162,7 @@ public class OsdSubMenuFragment extends Fragment {
 
 	private boolean mIsInit = false;
 
-	// ====================================== Dialog
-	// =====================================
+	// ====================================== Dialog =====================================
 
 	private Dialog mOnOffAlertDialog = null;
 	private Dialog dlgFactoryDeader = null;
@@ -156,6 +170,8 @@ public class OsdSubMenuFragment extends Fragment {
 	private Dialog dlgClearAllPro = null;
 	private Dialog dlgMulticastDisplayControl = null;
 	private Dialog dlgCancelSavePwd = null;
+	private Dialog reloadWebViewDlg = null;
+	private Dialog logManagerDialog = null;
 
 	// ====================================================================================
 
@@ -258,7 +274,7 @@ public class OsdSubMenuFragment extends Fragment {
 						int displayHight = rect.bottom - rect.top;
 						int hight = decorView.getHeight();
 						boolean softInputIsVisible = (double) displayHight / hight < 0.8;
-						if (softInputIsVisible) {
+						if (softInputIsVisible && PosterOsdActivity.INSTANCE != null) {
 							PosterOsdActivity.INSTANCE.cancelDismissTime();
 						} else {
 							PosterOsdActivity.INSTANCE.setDismissTime();
@@ -718,8 +734,8 @@ public class OsdSubMenuFragment extends Fragment {
 		about_swVer.setText(SysParamManager.getInstance().getSwVer());
 		about_hwVer.setText(SysParamManager.getInstance().getHwVer());
 		about_connStatus.setText(WsClient.getInstance().isOnline() ? R.string.serv_online : R.string.serv_offline);
-		about_id.setText(PosterApplication.getCpuId().toUpperCase());
-		about_MAC.setText(PosterApplication.getEthFormatMac().toUpperCase());
+		about_id.setText(PosterApplication.getCpuId().toUpperCase(Locale.getDefault()));
+		about_MAC.setText(PosterApplication.getEthFormatMac().toUpperCase(Locale.getDefault()));
 		about_diskStatus.setText(FileUtils.getDiskUseSpace() + "/" + FileUtils.getDiskSpace());
 		if (WsClient.getInstance().isOnline()) {
 			about_IP.setText(PosterApplication.getLocalIpAddress());
@@ -932,10 +948,13 @@ public class OsdSubMenuFragment extends Fragment {
 
 						try {
 							RuntimeExec.getInstance().runRootCmd("reboot");
-						} catch (Exception e) {
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-
 					}
 
 					@Override
@@ -978,12 +997,12 @@ public class OsdSubMenuFragment extends Fragment {
 				cancelSavePwd();
 			}
 		});
-		// 开机画面更新
-		((Button) mMenus[PosterOsdActivity.OSD_TOOL_ID].findViewById(R.id.tools_boot_screen_update)).setOnClickListener(new OnClickListener() {
+		// 网页刷新控制
+		((Button) mMenus[PosterOsdActivity.OSD_TOOL_ID].findViewById(R.id.tools_reload_webview)).setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
-
+				reloadWebView();
 			}
 		});
 		// 同步播放
@@ -991,7 +1010,6 @@ public class OsdSubMenuFragment extends Fragment {
 
 			@Override
 			public void onClick(View v) {
-				// TODO Auto-generated method stub
 				synchronousPlayControl();
 			}
 		});
@@ -999,26 +1017,64 @@ public class OsdSubMenuFragment extends Fragment {
 	}
 
 	@SuppressLint("InflateParams")
+	private void reloadWebView() {
+		final SharedPreferences sharedPreferences = getActivity().getSharedPreferences("reload_for_priod", Activity.MODE_PRIVATE);
+		boolean onOffReloadForPeriod = sharedPreferences.getBoolean("isReload", false);
+		int timeForPeriod = sharedPreferences.getInt("time_period", 10);
+		final View reloadView = LayoutInflater.from(getActivity()).inflate(R.layout.reload_webview_control, null);
+		final EditText reloadPeriodET = (EditText) reloadView.findViewById(R.id.reload_period);
+		reloadPeriodET.setText(String.valueOf(timeForPeriod));
+
+		final CheckBox reloadWebviewCB = (CheckBox) reloadView.findViewById(R.id.reload_webview);
+		reloadWebviewCB.setChecked(onOffReloadForPeriod);
+		reloadWebViewDlg = DialogUtil.showTipsDialog(getActivity(), getString(R.string.reload_webview), reloadView, getString(R.string.enter), getString(R.string.cancel), new DialogDoubleButtonListener() {
+
+			@Override
+			public void onRightClick(Context context, View v, int which) {
+				if (reloadWebViewDlg != null) {
+					DialogUtil.hideInputMethod(getActivity(), reloadView, reloadWebViewDlg);
+					reloadWebViewDlg.dismiss();
+					reloadWebViewDlg = null;
+				}
+			}
+
+			@Override
+			public void onLeftClick(Context context, View v, int which) {
+				SharedPreferences.Editor editor = sharedPreferences.edit();
+				editor.putBoolean("time_period", reloadWebviewCB.isChecked());
+				String strTime = reloadPeriodET.getText().toString();
+				int t = 10;
+				if (!TextUtils.isEmpty(strTime)) {
+					t = Integer.valueOf(strTime);
+				}
+				if (t < 10 && t > 3 * 60 * 60) {
+					Toast.makeText(getActivity(), "刷新时间不能低于10秒，或者大于10800", Toast.LENGTH_LONG).show();
+				} else {
+					editor.putInt("time_period", t);
+				}
+				editor.apply();
+				if (reloadWebViewDlg != null) {
+					DialogUtil.hideInputMethod(getActivity(), reloadView, reloadWebViewDlg);
+					reloadWebViewDlg.dismiss();
+					reloadWebViewDlg = null;
+				}
+			}
+		}, false);
+		reloadWebViewDlg.show();
+		DialogUtil.dialogTimeOff(reloadWebViewDlg, reloadView, 90000);
+	}
+
+	@SuppressLint("InflateParams")
 	private void synchronousPlayControl() {
-		// TODO Auto-generated method stub
-		final View multicastCtrlView = LayoutInflater.from(getActivity()).inflate(R.layout.multicast_control, null);
+		View multicastCtrlView = LayoutInflater.from(getActivity()).inflate(R.layout.multicast_control, null);
 
-		@SuppressWarnings("unused")
-		RadioGroup mulGro = (RadioGroup) multicastCtrlView.findViewById(R.id.multicast_group);
-		final RadioButton mulGroLed = (RadioButton) multicastCtrlView.findViewById(R.id.multicast_group_leader);
-		final RadioButton mulGroMember = (RadioButton) multicastCtrlView.findViewById(R.id.multicast_group_member);
-		final RadioButton mulClo = (RadioButton) multicastCtrlView.findViewById(R.id.multicast_close);
+		RadioButton mulGroLed = (RadioButton) multicastCtrlView.findViewById(R.id.multicast_group_leader);
+		RadioButton mulGroMember = (RadioButton) multicastCtrlView.findViewById(R.id.multicast_group_member);
+		RadioButton mulClo = (RadioButton) multicastCtrlView.findViewById(R.id.multicast_close);
 
-		@SuppressWarnings("unused")
-		TableRow mulIpAddConRow = (TableRow) multicastCtrlView.findViewById(R.id.multicast_ip_address_row);
-		@SuppressWarnings("unused")
-		TableRow mulLocalPortConRow = (TableRow) multicastCtrlView.findViewById(R.id.multicast_local_port_row);
-		@SuppressWarnings("unused")
-		TableRow mulPortRow = (TableRow) multicastCtrlView.findViewById(R.id.multicast_port_row);
-
-		final TextView mulIpAddCon = (TextView) multicastCtrlView.findViewById(R.id.multicast_ip_address_context);
-		final TextView mulLocalPortCon = (TextView) multicastCtrlView.findViewById(R.id.multicast_local_port_context);
-		final TextView mulPort = (TextView) multicastCtrlView.findViewById(R.id.multicast_port_context);
+		TextView mulIpAddCon = (TextView) multicastCtrlView.findViewById(R.id.multicast_ip_address_context);
+		TextView mulLocalPortCon = (TextView) multicastCtrlView.findViewById(R.id.multicast_local_port_context);
+		TextView mulPort = (TextView) multicastCtrlView.findViewById(R.id.multicast_port_context);
 
 		// Read @param from DB
 		String strBcastIp = DbHelper.getInstance().getBcastIpFromDB();
@@ -1041,15 +1097,29 @@ public class OsdSubMenuFragment extends Fragment {
 		mulIpAddCon.setText(strBcastIp);
 		mulLocalPortCon.setText(String.valueOf(nLocalPort));
 		mulPort.setText(String.valueOf(nPort));
+		dlgMulticast(multicastCtrlView, mulGroLed, mulGroMember, mulClo, mulIpAddCon, mulLocalPortCon, mulPort);
+	}
+
+	private void dlgMulticast(final View multicastCtrlView, final RadioButton mulGroLed, final RadioButton mulGroMember, final RadioButton mulClo, final TextView mulIpAddCon, final TextView mulLocalPortCon, final TextView mulPort) {
 		dlgMulticastDisplayControl = DialogUtil.showTipsDialog(getActivity(), getString(R.string.multicast_display_control), multicastCtrlView, getString(R.string.enter), getString(R.string.cancel), new DialogDoubleButtonListener() {
 
 			@Override
 			public synchronized void onLeftClick(Context context, View v, int which) {
-				// TODO Auto-generated method stub
 				// 获取数据库同步参数
 				String strBcastIp = mulIpAddCon.getText().toString();
-				int port = Integer.valueOf(mulPort.getText().toString());
-				int localPort = Integer.valueOf(mulLocalPortCon.getText().toString());
+				int port = 0;
+				int localPort = 0;
+				String strPort = mulPort.getText().toString();
+				String strLocalPort = mulLocalPortCon.getText().toString();
+
+				if (!TextUtils.isEmpty(strLocalPort)) {
+					localPort = Integer.valueOf(mulLocalPortCon.getText().toString());
+				}
+
+				if (!TextUtils.isEmpty(strPort)) {
+					port = Integer.valueOf(mulPort.getText().toString());
+				}
+
 				int progsync = MulticastCommon.MC_VALUE_PROGSYNC_CLOSE;
 
 				if (mulGroLed.isChecked() == true) {
@@ -1152,7 +1222,7 @@ public class OsdSubMenuFragment extends Fragment {
 
 		dlgMulticastDisplayControl.show();
 
-		DialogUtil.dialogTimeOff(dlgMulticastDisplayControl, 90000);
+		DialogUtil.dialogTimeOff(dlgMulticastDisplayControl, multicastCtrlView, 90000);
 	}
 
 	private void saveServerParam() {
@@ -1234,14 +1304,123 @@ public class OsdSubMenuFragment extends Fragment {
 	 * 日志管理
 	 */
 	private void logManager() {
-		LogManagerDialog ldlg = new LogManagerDialog(getActivity(), R.style.logsetdialog);
-		ldlg.setCancelable(true);
-		Window wd = ldlg.getWindow();
-		android.view.WindowManager.LayoutParams lp = wd.getAttributes();
-		lp.gravity = Gravity.CENTER;
-		wd.setAttributes(lp);
-		ldlg.setCanceledOnTouchOutside(false);
-		ldlg.show();
+		spfLogM = getActivity().getSharedPreferences("logset", Activity.MODE_PRIVATE);
+		logmamagerView = LayoutInflater.from(getActivity()).inflate(R.layout.logmanager_dialog, null);
+		playcbLogM = (CheckBox) logmamagerView.findViewById(R.id.logmanager_dialog_palycbox);
+		systemcbLogM = (CheckBox) logmamagerView.findViewById(R.id.logmanager_dialog_systemcbox);
+		playcbLogM.setChecked(spfLogM.getBoolean("play", true));
+		systemcbLogM.setChecked(spfLogM.getBoolean("system", true));
+		playcbLogM.setOnCheckedChangeListener(onCheckedChangeListener);
+		systemcbLogM.setOnCheckedChangeListener(onCheckedChangeListener);
+		/*
+		 * logManagerDialog = DialogUtil.showTipsDialog(getActivity(),
+		 * getString(R.string.tools_dialog_log_header), logmamagerView,
+		 * getString(R.string.tools_dialog_log_upload),
+		 * getString(R.string.cancel), new DialogDoubleButtonListener() {
+		 * 
+		 * @Override public void onRightClick(Context context, View v, int
+		 * which) { if (logManagerDialog != null) { logManagerDialog.dismiss();
+		 * logManagerDialog = null; } }
+		 * 
+		 * @Override public void onLeftClick(Context context, View v, int which)
+		 * { LogManager.getInstance().uploadLog(LogManager.LOGTYPE_NORMAL, 0);
+		 * if (logManagerDialog != null) { logManagerDialog.dismiss();
+		 * logManagerDialog = null; } } }, false);
+		 */
+		logManagerDialog = DialogUtil.showTipsDialog(getActivity(), getString(R.string.tools_dialog_log_header), null, logmamagerView, getString(R.string.tools_dialog_log_upload), getString(R.string.tools_dialog_log_clear), getString(R.string.cancel), new DialogThreeButtonListener() {
+
+			@Override
+			public void onThirdClick(Context context, View v, int which) {
+				// TODO Auto-generated method stub
+				if (logManagerDialog != null) {
+					logManagerDialog.dismiss();
+					logManagerDialog = null;
+				}
+			}
+
+			@Override
+			public void onSecondClick(Context context, View v, int which) {
+				// TODO Auto-generated method stub
+				StringBuilder sb = new StringBuilder();
+				sb.append(FileUtils.getHardDiskPath());
+				sb.append(File.separator);
+				sb.append("ystemplog");
+				FileUtils.delDir(sb.toString());
+				if (logManagerDialog != null) {
+					logManagerDialog.dismiss();
+					logManagerDialog = null;
+				}
+			}
+
+			@Override
+			public void onFirstClick(Context context, View v, int which) {
+				// TODO Auto-generated method stub
+				LogManager.getInstance().uploadLog(LogManager.LOGTYPE_NORMAL, 0);
+				if (logManagerDialog != null) {
+					logManagerDialog.dismiss();
+					logManagerDialog = null;
+				}
+			}
+		}, false);
+		logManagerDialog.show();
+
+		DialogUtil.dialogTimeOff(logManagerDialog, 90000);
+		/*
+		 * LogManagerDialog ldlg = new LogManagerDialog(getActivity(),
+		 * R.style.logsetdialog); ldlg.setCancelable(true); Window wd =
+		 * ldlg.getWindow(); android.view.WindowManager.LayoutParams lp =
+		 * wd.getAttributes(); lp.gravity = Gravity.CENTER;
+		 * wd.setAttributes(lp); ldlg.setCanceledOnTouchOutside(false);
+		 * ldlg.show();
+		 */
+	}
+
+	OnCheckedChangeListener onCheckedChangeListener = new OnCheckedChangeListener() {
+
+		@Override
+		public void onCheckedChanged(CompoundButton arg0, boolean arg1) {
+			switch (arg0.getId()) {
+			case R.id.logmanager_dialog_palycbox:
+				changeLogSet(CHANGEPALYSET, arg1);
+				Logger.i("change playlogset");
+				break;
+			case R.id.logmanager_dialog_systemcbox:
+				changeLogSet(CHANGESYSTEMSET, arg1);
+				Logger.i("change systemlogset");
+				break;
+			default:
+				break;
+			}
+		}
+	};
+
+	/**
+	 * 改变日志记录设置
+	 * 
+	 * @param which
+	 *            哪个日志
+	 * @param isselected
+	 *            是否记录
+	 */
+	private void changeLogSet(int which, boolean isselected) {
+		boolean isresult = true;
+		SharedPreferences.Editor edi = spfLogM.edit();
+		switch (which) {
+		case CHANGEPALYSET:
+			isresult = isselected == spfLogM.getBoolean("play", true) ? isselected : isselected;
+			edi.putBoolean("play", isresult);
+			LogUtils.getInstance().setPlayLogFlag(isresult);
+
+			break;
+		case CHANGESYSTEMSET:
+			isresult = isselected == spfLogM.getBoolean("system", true) ? isselected : isselected;
+			edi.putBoolean("system", isresult);
+			LogUtils.getInstance().setSysLogFlag(isresult);
+			break;
+		default:
+			break;
+		}
+		edi.commit();
 	}
 
 	private void cancelSavePwd() {
@@ -1526,7 +1705,7 @@ public class OsdSubMenuFragment extends Fragment {
 
 		mOnOffAlertDialog.show();
 
-		DialogUtil.dialogTimeOff(mOnOffAlertDialog, 90000);
+		DialogUtil.dialogTimeOff(mOnOffAlertDialog, mEidtClockView, 90000);
 	}
 
 	private boolean isValidTime(final String timeStr) {
@@ -1635,6 +1814,6 @@ public class OsdSubMenuFragment extends Fragment {
 
 		mOnOffAlertDialog.show();
 
-		DialogUtil.dialogTimeOff(mOnOffAlertDialog, 90000);
+		DialogUtil.dialogTimeOff(mOnOffAlertDialog, mEidtClockView, 90000);
 	}
 }

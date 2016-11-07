@@ -29,7 +29,7 @@ public class RuntimeExec {
 		return RuntimeExecHolder.INSTANCE;
 	}
 
-	public int runRootCmd(String command) {
+	public int runRootCmd(String command) throws IOException, InterruptedException {
 		int exitVal = 0;
 		Process process = null;
 
@@ -43,49 +43,34 @@ public class RuntimeExec {
 				excuteCmd(process.getOutputStream(), command);
 				exitVal = process.waitFor();
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
-			try {
-				if (process.getOutputStream() != null) {
-					process.getOutputStream().close();
-				}
+			if (process.getOutputStream() != null) {
+				process.getOutputStream().close();
+			}
 
-				if (process.getInputStream() != null) {
-					process.getInputStream().close();
-				}
+			if (process.getInputStream() != null) {
+				process.getInputStream().close();
+			}
 
-				if (process.getErrorStream() != null) {
-					process.getErrorStream().close();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
+			if (process.getErrorStream() != null) {
+				process.getErrorStream().close();
 			}
 		}
 
 		return exitVal;
 	}
 
-	private void excuteCmd(OutputStream osCmd, String cmd) {
+	private void excuteCmd(OutputStream osCmd, String cmd) throws IOException {
 		DataOutputStream dos = new DataOutputStream(osCmd);
-		try {
-			if (dos != null) {
-				dos.writeBytes(cmd);
-				dos.writeBytes(COMMAND_LINE_END);
-				dos.flush();
-				dos.writeBytes(COMMAND_EXIT);
-				dos.flush();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (dos != null) {
-				try {
-					dos.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+		if (dos != null) {
+			dos.writeBytes(cmd);
+			dos.writeBytes(COMMAND_LINE_END);
+			dos.flush();
+			dos.writeBytes(COMMAND_EXIT);
+			dos.flush();
+
+			dos.close();
+			dos = null;
 		}
 	}
 

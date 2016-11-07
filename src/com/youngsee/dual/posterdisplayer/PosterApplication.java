@@ -1104,10 +1104,17 @@ public class PosterApplication extends Application
     		}
     		t.normalize(true);
     		
-    		StringBuilder sb = new StringBuilder();
-    		sb.append("date -s ").append(String.format("%d%02d%02d.%02d%02d%02d", t.year, t.month+1, t.monthDay,
-                    t.hour, t.minute, t.second));
-            RuntimeExec.getInstance().runRootCmd(sb.toString());
+            try 
+            {
+            	StringBuilder sb = new StringBuilder();
+        		sb.append("date -s ").append(String.format("%d%02d%02d.%02d%02d%02d", t.year, t.month+1, t.monthDay,
+                        t.hour, t.minute, t.second));
+				RuntimeExec.getInstance().runRootCmd(sb.toString());
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
     	}
     }
     
@@ -1643,7 +1650,7 @@ public class PosterApplication extends Application
         t.parse(sb.toString());
         return t.toMillis(false);
     }
-
+    
     /**
      * 获取屏幕方向
      * @return 1:0° 2:90° 4:180° 8:270° 默认值是1
@@ -1651,11 +1658,13 @@ public class PosterApplication extends Application
     public int getHwRotation() {
 	    return (int) Settings.System.getLong(getContentResolver(), Settings.System.ACCELEROMETER_ROTATION_ANGLES,1);
 	}
+
     
     //get the object of YSConfiguration.
     public YSConfiguration getConfiguration(){
         return mConfiguration;
     }
+    
     
     public static boolean isServiceRunning(Context context, String srvName)
     {

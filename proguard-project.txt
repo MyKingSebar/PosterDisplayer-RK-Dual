@@ -82,6 +82,7 @@
 -keep class com.youngsee.dual.common.FileUtils {*;}
 -keep class com.youngsee.dual.common.SerialPort {*;}
 -keep class com.youngsee.dual.common.ReflectionUtils {*;}
+-keep class com.youngsee.dual.update.UpdateApkInfo {*;}
 
 -keepclasseswithmembernames class * {                                           # 保持 native 方法不被混淆
     native <methods>;

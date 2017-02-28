@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/auth_bg"
-    android:id="@+id/root" >"
+    android:id="@+id/root" >
     
     <LinearLayout
         android:layout_width="match_parent"

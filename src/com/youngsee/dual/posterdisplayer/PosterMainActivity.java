@@ -93,7 +93,6 @@ public class PosterMainActivity extends Activity {
 
 	private WakeLock mWklk = null;
 	private FrameLayout mMainLayout = null;
-
 	private PopupWindow mOsdPupupWindow = null; // OSD 弹出菜单
 
 	private Intent popService = null;
@@ -157,7 +156,7 @@ public class PosterMainActivity extends Activity {
 		}
 
 		// 初始化背景颜色
-		mMainLayout = ((FrameLayout) findViewById(R.id.root));
+		mMainLayout = ((FrameLayout) findViewById(R.id.pgmroot));
 		mMainLayout.setBackgroundColor(Color.BLACK);
 
 		if (mWklk == null) {
@@ -621,7 +620,8 @@ public class PosterMainActivity extends Activity {
 
 	private void cleanupLayout() {
 		/**************************
-		 * 注意：辅屏的主窗口不能移除，否 * 则SurfaceView将显示不出来 *
+		 * 注意：辅屏的主窗口不能移除，否 * 
+		 * 则SurfaceView将显示不出来   * 
 		 **************************/
 		if (mMainWindow != null) {
 			mMainWindow.stopWork();
@@ -697,7 +697,20 @@ public class PosterMainActivity extends Activity {
 
 				// 创建窗口
 				if (wndType.contains("Main") || wndType.contains("StandbyScreen")) {
-					tempSubWnd = new MultiMediaView(this, true);
+                	if (mMainWindow == null)
+                	{
+                		mMainWindow = new MultiMediaView(this, true);
+                		tempSubWnd = mMainWindow;
+                	}
+                	else
+                	{
+                		mMainWindow.setViewName(wndName);
+                		mMainWindow.setViewType(wndType);
+                		mMainWindow.setMediaList(mediaList);
+                		mMainWindow.setViewPosition(xPos, yPos);
+                		mMainWindow.setViewSize(width, height);
+                        continue;
+                	}
 				} else if (wndType.contains("Background")) {
 					// 背景图片
 					if (mediaList != null && mediaList.size() > 0 && "File".equals(mediaList.get(0).source)) {
@@ -729,11 +742,13 @@ public class PosterMainActivity extends Activity {
 					tempSubWnd.setViewPosition(xPos, yPos);
 					tempSubWnd.setViewSize(width, height);
 					mMainLayout.addView(tempSubWnd);
-					mSubWndCollection.add(tempSubWnd);
-				}
-			}
-		}
-
+					if (tempSubWnd != mMainWindow) 
+					{
+						mSubWndCollection.add(tempSubWnd);
+					}
+                }
+            }
+        }
 		if (mSubWndCollection != null) {
 			if (mMainWindow != null) {
 				mMainWindow.startWork();

@@ -5,11 +5,11 @@
  * @author LiLiang-Ping
  */
 
-package com.youngsee.customview;
+package com.youngsee.dual.customview;
 
-import com.youngsee.logmanager.Logger;
-import com.youngsee.posterdisplayer.PosterMainActivity;
-import com.youngsee.posterdisplayer.R;
+import com.youngsee.dual.logmanager.Logger;
+import com.youngsee.dual.posterdisplayer.PosterMainActivity;
+import com.youngsee.dual.posterdisplayer.R;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;

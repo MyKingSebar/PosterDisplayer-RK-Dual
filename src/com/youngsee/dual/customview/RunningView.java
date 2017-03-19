@@ -1,6 +1,6 @@
-package com.youngsee.customview;
+package com.youngsee.dual.customview;
 
-import com.youngsee.posterdisplayer.R;
+import com.youngsee.dual.posterdisplayer.R;
 
 import android.content.Context;
 import android.graphics.drawable.AnimationDrawable;
